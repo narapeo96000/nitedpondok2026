@@ -9,6 +9,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@ckeditor/ckeditor5-build-classic@41.3.1/build/ckeditor.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.20/dist/sweetalert2.all.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <link rel="icon" href="data:,">
 
   <style>
@@ -487,6 +489,18 @@
             </div>
           </div>
 
+          <!-- ปักหมุดพิกัดแผนที่ (ดาวเทียม) -->
+          <div class="card" id="pinCard" style="display:none;">
+            <div class="card-title"><h4>ปักหมุดพิกัดแผนที่</h4><span class="badge lv lv-blue">ดาวเทียม</span></div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:8px;">
+              <button type="button" class="btn btn-outline2 btn-sm" id="pinGpsBtn" onclick="pinLocation()">📍 ปักหมุดตำแหน่งปัจจุบัน (GPS)</button>
+              <button type="button" class="btn btn-outline2 btn-sm" onclick="pinManual()">🖱️ คลิกเลือกบนแผนที่</button>
+              <button type="button" class="btn btn-success btn-sm" id="savePinBtn" onclick="savePin()" disabled>💾 บันทึกพิกัด</button>
+            </div>
+            <div id="pinMapBox" style="height:260px; border-radius:10px; margin-bottom:8px;"></div>
+            <div class="small text-muted" id="pinStatus"></div>
+          </div>
+
           <!-- ประวัติ -->
           <div class="card">
             <div class="card-title"><h4>ประวัติการนิเทศของสถาบันนี้</h4><span class="badge" id="histCount">0 รายการ</span></div>
@@ -921,7 +935,7 @@
         '<tr>' +
         '<td><span class="addr-id">' + esc(c.id) + '</span><br>' +
         '<span class="addr-name">' + esc(c.name) + '</span>' +
-        (c.coords ? '<br><span class="small text-muted">' + esc(c.coords) + '</span>' : '') +
+        (c.coords ? '<br><span class="small text-muted">พิกัด: <a href="https://www.google.com/maps?q=' + encodeURIComponent(c.coords) + '" target="_blank" rel="noopener" style="color:var(--blue-dark); font-weight:600;">' + esc(c.coords) + ' ↗</a></span>' : '') +
         '</td>' +
         '<td data-label="ที่อยู่">' + esc(c.address) + '</td>' +
         '<td data-label="อำเภอ">' + esc(c.dist) + '</td>' +
@@ -946,6 +960,8 @@
       resetEvalState();
       buildTabs();
       switchForm(0);
+      $('pinCard').style.display = '';
+      initPinMap();
       await loadHistory();
       $('evaluationSection').scrollIntoView({ behavior: 'smooth' });
     }
@@ -968,6 +984,98 @@
     function backToSelect() {
       $('evaluationSection').classList.add('section-hidden');
       $('evaluationSection').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // ---- ปักหมุดพิกัดแผนที่ (ดาวเทียม) ----
+    let pinMap = null, pinMarker = null, pinDraft = null;
+
+    function initPinMap() {
+      const box = $('pinMapBox');
+      if (!box || typeof L === 'undefined') return;
+      if (pinMap) { pinMap.invalidateSize(); updatePinView(); return; }
+      pinMap = L.map(box).setView([6.425, 101.822], 9);
+      const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' });
+      const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Tiles &copy; Esri, Maxar' });
+      L.control.layers({ 'ถนน (แผนที่)': osm, 'ดาวเทียม': sat }, null, { collapsed: false }).addTo(pinMap);
+      sat.addTo(pinMap);
+      pinMap.on('click', e => setPinCoords(e.latlng.lat.toFixed(6), e.latlng.lng.toFixed(6)));
+      updatePinView();
+    }
+
+    function setPinCoords(lat, lng) {
+      pinDraft = String(lat) + ',' + String(lng);
+      if (pinMap) {
+        pinMap.setView([lat, lng], 17);
+        if (!pinMarker) {
+          pinMarker = L.marker([lat, lng], { draggable: true }).addTo(pinMap);
+          pinMarker.on('dragend', e => setPinCoords(e.target.getLatLng().lat.toFixed(6), e.target.getLatLng().lng.toFixed(6)));
+        } else {
+          pinMarker.setLatLng([lat, lng]);
+        }
+      }
+      $('savePinBtn').disabled = false;
+      $('pinStatus').innerHTML = 'พิกัดใหม่: <b>' + esc(pinDraft) + '</b> (ลากหมุดหรือคลิกเพื่อย้าย กด "บันทึกพิกัด")';
+    }
+
+    function updatePinView() {
+      const st = $('pinStatus'), cs = selectedPondok && selectedPondok.coords ? String(selectedPondok.coords).trim() : '';
+      if (cs) {
+        const parts = cs.split(',');
+        if (parts.length >= 2 && !isNaN(Number(parts[0])) && !isNaN(Number(parts[1]))) {
+          const la = Number(parts[0]), lo = Number(parts[1]);
+          if (pinMap) {
+            pinMap.setView([la, lo], 16);
+            if (!pinMarker) {
+              pinMarker = L.marker([la, lo], { draggable: true }).addTo(pinMap);
+              pinMarker.on('dragend', e => setPinCoords(e.target.getLatLng().lat.toFixed(6), e.target.getLatLng().lng.toFixed(6)));
+            } else {
+              pinMarker.setLatLng([la, lo]);
+            }
+          }
+          if (st) st.innerHTML = 'พิกัดปัจจุบัน: <b>' + esc(cs) + '</b> (ลากหมุดหรือคลิกเพื่อย้าย)';
+          return;
+        }
+      }
+      if (st) st.textContent = 'ยังไม่มีพิกัด ใช้ปุ่ม GPS หรือคลิกบนแผนที่';
+      if (pinMarker) { pinMap.removeLayer(pinMarker); pinMarker = null; }
+    }
+
+    function pinLocation() {
+      if (typeof navigator === 'undefined' || !navigator.geolocation) {
+        return Swal.fire({ icon: 'error', title: 'ไม่รองรับ', text: 'เบราว์เซอร์นี้ไม่รองรับการระบุตำแหน่ง (GPS)' });
+      }
+      const btn = $('pinGpsBtn');
+      btn.disabled = true; btn.innerText = '⏳ กำลังหาตำแหน่ง...';
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          setPinCoords(pos.coords.latitude.toFixed(6), pos.coords.longitude.toFixed(6));
+          Swal.fire({ icon: 'success', title: 'ปักหมุดสำเร็จ!', text: 'ละติจูด: ' + pos.coords.latitude.toFixed(6) + ', ลองจิจูด: ' + pos.coords.longitude.toFixed(6), timer: 1800, showConfirmButton: false });
+          if (btn) { btn.disabled = false; btn.innerText = '📍 ปักหมุดตำแหน่งปัจจุบัน (GPS)'; }
+        },
+        err => {
+          const msgs = { 1: 'คุณไม่อนุญาตให้เข้าถึงตำแหน่ง', 2: 'ระบบไม่สามารถรับสัญญาณตำแหน่งได้', 3: 'การค้นหาตำแหน่งหมดเวลา' };
+          Swal.fire({ icon: 'warning', title: 'ไม่สามารถปักหมุดได้', text: msgs[err.code] || 'เกิดข้อผิดพลาดในการระบุตำแหน่ง' });
+          if (btn) { btn.disabled = false; btn.innerText = '📍 ปักหมุดตำแหน่งปัจจุบัน (GPS)'; }
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
+      );
+    }
+
+    function pinManual() {
+      Swal.fire({ icon: 'info', title: 'คลิกเลือกบนแผนที่', text: 'คลิกตรงตำแหน่งที่ต้องการ หรือลากหมุดสีฟ้าเพื่อเลื่อน แล้วกด "บันทึกพิกัด"', timer: 2500, showConfirmButton: false });
+    }
+
+    async function savePin() {
+      if (!selectedPondok || !pinDraft) { Swal.fire({ icon: 'warning', title: 'ยังไม่มีพิกัดที่จะบันทึก' }); return; }
+      const res = await api('savePondokPin', { id: selectedPondok.id, coords: pinDraft });
+      Swal.fire({ icon: res.success ? 'success' : 'error', title: esc(res.message || '') });
+      if (res.success) {
+        selectedPondok.coords = pinDraft;
+        $('savePinBtn').disabled = true;
+        $('pinStatus').innerHTML = 'พิกัดปัจจุบัน: <b>' + esc(pinDraft) + '</b>';
+        await loadPondokList();
+        renderDir();
+      }
     }
 
     function readCenterInputs() {
