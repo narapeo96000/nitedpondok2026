@@ -354,7 +354,11 @@
         <label>Username</label>
         <input type="text" id="loginUser" class="form-control mb-3">
         <label>Password</label>
-        <input type="password" id="loginPass" class="form-control mb-3" onkeypress="if(event.key==='Enter') handleLogin(event)">
+        <input type="password" id="loginPass" class="form-control" onkeypress="if(event.key==='Enter') handleLogin(event)">
+        <div style="display:flex; gap:16px; align-items:center; margin:8px 0 12px;">
+          <label style="font-size:.86rem; display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" id="showPass" onchange="togglePassword()"> แสดงรหัสผ่าน</label>
+          <label style="font-size:.86rem; display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" id="rememberPass"> จดจำรหัสผ่าน</label>
+        </div>
         <label>เลือกสถาบันปอเนาะที่จะนิเทศ <span class="small text-muted">(พิมพ์ค้นหาได้)</span></label>
         <div class="position-relative">
           <input type="text" id="lgPondokSearch" class="form-control" placeholder="ชื่อปอเนาะ / ที่อยู่ / ตำบล / อำเภอ..."
@@ -782,6 +786,21 @@
     }
 
     // ===================== Auth =====================
+    function togglePassword() {
+      $('loginPass').type = $('showPass').checked ? 'text' : 'password';
+    }
+
+    function restoreSavedLogin() {
+      try {
+        const s = JSON.parse(localStorage.getItem('pondok_login') || 'null');
+        if (s && s.u) {
+          $('loginUser').value = s.u || '';
+          $('loginPass').value = s.p || '';
+          $('rememberPass').checked = true;
+        }
+      } catch (e) {}
+    }
+
     async function handleLogin(ev) {
       if (ev && ev.preventDefault) ev.preventDefault();
       const u = $('loginUser').value.trim();
@@ -794,6 +813,11 @@
         if (!res.success) { Swal.fire({ icon: 'error', title: 'เข้าสู่ระบบไม่สำเร็จ', html: esc(res.message || '') }); return; }
         session = res.userData;
         try { localStorage.setItem('pondok_session', JSON.stringify(session)); } catch (e) {}
+        if ($('rememberPass').checked) {
+          try { localStorage.setItem('pondok_login', JSON.stringify({ u, p })); } catch (e) {}
+        } else {
+          try { localStorage.removeItem('pondok_login'); } catch (e) {}
+        }
         enterApp();
       } catch (err) {
         Swal.fire({ icon: 'error', title: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', text: String(err) });
@@ -1631,6 +1655,7 @@
     // ===================== Boot =====================
     (async function boot() {
       showLogin();
+      restoreSavedLogin();
       newCaptcha();
       await loadPondokList();
       try {
