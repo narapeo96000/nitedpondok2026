@@ -6,6 +6,7 @@
   <title>ระบบนิเทศออนไลน์ สถาบันศึกษาปอเนาะ จังหวัดนราธิวาส</title>
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.20/dist/sweetalert2.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@ckeditor/ckeditor5-build-classic@41.3.1/build/ckeditor.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.20/dist/sweetalert2.all.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="data:,">
@@ -82,6 +83,8 @@
     }
     .form-control.bg-light { background: #f0faf8; border-color: transparent; }
     textarea.form-control { min-height: 90px; resize: vertical; }
+    .ck-editor__editable_inline { min-height: 90px; max-height: 280px; overflow-y: auto; border-radius: 10px; }
+    .q-note .ck-editor__editable_inline { min-height: 68px; }
     .row { display: flex; flex-wrap: wrap; margin: 0 -6px; }
     .col { padding: 0 6px; }
     .col-3 { width: 25%; } .col-4 { width: 33.33%; } .col-6 { width: 50%; } .col-12 { width: 100%; }
@@ -1179,6 +1182,7 @@
       $('formPanels').innerHTML = html;
       if (f.qualitative) renderApRows();
       applyState(f);
+      initNoteCk();
     }
 
     function secPts(sec, f) {
@@ -1257,6 +1261,51 @@
       f7sum[map[t.id]] = t.value;
     }
 
+    // ---- CKEditor สำหรับกล่องหมายเหตุ (บันทึกเป็นข้อความธรรมดา) ----
+    function ckToText(html) {
+      let s = String(html || '').replace(/<\/(p|div|li|h\d)>/gi, '\n').replace(/<br\s*\/?>/gi, '\n').replace(/<li[^>]*>/gi, '• ');
+      const tmp = document.createElement('div'); tmp.innerHTML = s;
+      return ((tmp.textContent || tmp.innerText || '').replace(/[ \t]+/g, ' ').replace(/[ \t]*\n[ \t]*/g, '\n').replace(/\n{3,}/g, '\n\n')).trim();
+    }
+
+    function ckId(id) { return (window.__ckEditors || {})[id]; }
+
+    function ckText(id) {
+      const e = ckId(id), t = $(id);
+      if (e) return ckToText(e.getData());
+      return t ? String(t.value || '') : '';
+    }
+
+    function destroyNoteCk() {
+      Object.values(window.__ckEditors || {}).forEach(ed => { try { ed.destroy(); } catch (e) {} });
+      window.__ckEditors = {};
+    }
+
+    function initNoteCk() {
+      if (!window.ClassicEditor) return;
+      window.__ckGen = (window.__ckGen || 0) + 1;
+      const gen = window.__ckGen;
+      destroyNoteCk();
+      window.__ckEditors = {};
+      const targets = Array.prototype.slice.call(document.querySelectorAll('#formPanels textarea[data-note], #formPanels textarea[id^="f6_"], #formPanels textarea[id^="f7_"]'));
+      targets.forEach(t => {
+        const key = t.hasAttribute('data-note') ? 'note_' + t.dataset.note : t.id;
+        ClassicEditor.create(t, {
+          toolbar: ['bold', 'italic', 'underline', 'link', 'bulletedList', 'numberedList', 'blockQuote', 'undo', 'redo'],
+          placeholder: t.hasAttribute('data-note') ? (t.getAttribute('placeholder') || '') : ''
+        }).then(ed => {
+          if (gen !== window.__ckGen) { ed.destroy(); return; }
+          window.__ckEditors[key] = ed;
+          ed.model.document.on('change:data', () => {
+            t.value = ckToText(ed.getData());
+            if (t.hasAttribute('data-note')) noteInput(t);
+            else if (t.id.indexOf('f6_') === 0) f6Input(t);
+            else if (t.id.indexOf('f7_') === 0) f7Input(t);
+          });
+        }).catch(() => {});
+      });
+    }
+
     // ---- Action Plan table ----
     function renderApRows() {
       $('apBody').innerHTML = apRows.map((r, i) =>
@@ -1277,18 +1326,22 @@
     function delApRow(i) { apRows.splice(i, 1); renderApRows(); }
 
     async function aiDraftPlan() {
-      if (!$('f6_improve').value.trim()) {
+      const improve = ckText('f6_improve');
+      if (!improve.trim()) {
         Swal.fire({ icon: 'info', title: 'กรอก "ประเด็นที่ต้องพัฒนา" ก่อน', text: 'AI จะใช้ประเด็นนี้ช่วยร่างแผนพัฒนา' });
         return;
       }
       Swal.fire({ title: 'กำลังให้ AI ร่างแผน...', didOpen: () => Swal.showLoading(), allowOutsideClick: false, showConfirmButton: false });
-      const prompt = 'ช่วยร่างแผนพัฒนา (Action Plan) สำหรับสถาบันปอเนาะ โดยมีประเด็นต้องพัฒนา: "' + $('f6_improve').value.trim() +
-        '" และจุดแข็ง: "' + ($('f6_strengths').value.trim() || 'ไม่ระบุ') +
+      const prompt = 'ช่วยร่างแผนพัฒนา (Action Plan) สำหรับสถาบันปอเนาะ โดยมีประเด็นต้องพัฒนา: "' + improve.trim() +
+        '" และจุดแข็ง: "' + (ckText('f6_strengths').trim() || 'ไม่ระบุ') +
         '" ตอบเป็น bullet สั้น ๆ รูปแบบ: กิจกรรม — ผู้รับผิดชอบ — กำหนดเสร็จ — หลักฐาน ไม่เกิน 5 ข้อ';
       try {
         const res = await api('chat', prompt);
-        $('f6_comment').value = (res.reply || '').replace(/\*\*/g, '');
-        f6.comment = $('f6_comment').value;
+        const txt = (res.reply || '').replace(/\*\*/g, '');
+        const ce = ckId('f6_comment');
+        if (ce) ce.setData(txt.replace(/\n/g, '<br>'));
+        $('f6_comment').value = txt;
+        f6.comment = ckToText(txt);
         Swal.close();
         Swal.fire({ icon: 'success', title: 'AI ร่างแผนแล้ว', text: 'ดูข้อเสนอในช่อง "หมายเหตุ/ข้อเสนอแนะ" ด้านล่าง', timer: 2200, showConfirmButton: false });
       } catch (e) {
