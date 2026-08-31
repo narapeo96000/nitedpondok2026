@@ -4,13 +4,13 @@ const SHEET_ID = '1qk9eLhwKgPvh2fLwWNSthV4JKyDkJGqJojhLDus5460';
 // ใช้ชีต ADDR_PONDOK + DATA_PONDOK + USERS ภายใน Spreadsheet เดียวกับระบบตาดีกา
 // โครงสร้างชีต ADDR_PONDOK (เริ่มข้อมูลจริงที่แถว 6):
 //   A=รหัส, B=ชื่อปอเนาะ, C=ที่อยู่, D=อำเภอ, E=ตำบล, F=โทรศัพท์,
-//   G=จำนวนบุคลากร, H=จำนวนผู้เรียน, I=จำนวนผู้เรียนต่างชาติ
+//   G=จำนวนบุคลากร, H=จำนวนผู้เรียน, I=จำนวนผู้เรียนต่างชาติ, J=พิกัดแผนที่
 // ============================================================
 const SHEET_DATA_PONDOK = 'DATA_PONDOK';
 const SHEET_ADDR_PONDOK = 'ADDR_PONDOK';
 const SHEET_USERS = 'USERS';
 const TYPE_PONDOK = 'ปอเนาะ';
-const PONDOK_ADDR_COLS = 9;
+const PONDOK_ADDR_COLS = 10;
 
 // โครงสร้างชีต DATA (15 คอลัมน์ รองรับการประเมิน 4 ด้าน + สรุป)
 const DATA_HEADERS = ['Timestamp', 'ID ศูนย์', 'ชื่อศูนย์', 'ประเภทการประเมิน', 'คะแนนแบบ1', 'คะแนนแบบ2', 'คะแนนแบบ3', 'คะแนนแบบ4', 'รวม/150', 'ร้อยละ', 'ระดับ', 'รายละเอียด', 'ผู้นิเทศ', 'แก้ไขครั้งล่าสุด', 'ผู้แก้ไขล่าสุด'];
@@ -338,7 +338,7 @@ function offlineChatReply(msg) {
 //
 // โครงสร้างชีต ADDR_PONDOK (เริ่มข้อมูลจริงที่แถว 6):
 //   A=รหัส, B=ชื่อปอเนาะ, C=ที่อยู่, D=อำเภอ, E=ตำบล, F=โทรศัพท์,
-//   G=จำนวนบุคลากร, H=จำนวนผู้เรียน, I=จำนวนผู้เรียนต่างชาติ
+//   G=จำนวนบุคลากร, H=จำนวนผู้เรียน, I=จำนวนผู้เรียนต่างชาติ, J=พิกัดแผนที่
 // ---------------------------------------------------------
 function fetchStatisticsForAI() {
   const ss = SpreadsheetApp.openById(SHEET_ID);
@@ -499,7 +499,8 @@ function getPondokList() {
             phone: rows[i][5],
             staff: rows[i][6],
             students: rows[i][7],
-            foreign: rows[i][8]
+            foreign: rows[i][8],
+            coords: String(rows[i][9] || '')
           });
         }
       }
@@ -589,7 +590,8 @@ function getPondokData(id) {
               type: TYPE_PONDOK,
               id: rows[i][0], name: rows[i][1], address: rows[i][2],
               dist: rows[i][3], subdist: rows[i][4], phone: rows[i][5],
-              staff: rows[i][6], students: rows[i][7], foreign: rows[i][8]
+              staff: rows[i][6], students: rows[i][7], foreign: rows[i][8],
+              coords: String(rows[i][9] || '')
             }
           };
         }

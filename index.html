@@ -377,9 +377,9 @@
         <div class="table-wrap mt-2">
           <table class="addr-table">
             <thead>
-              <tr><th>รหัส</th><th>ชื่อปอเนาะ</th><th>ที่อยู่</th><th>อำเภอ</th><th>ตำบล</th><th>โทรศัพท์</th><th>บุคลากร</th><th>ผู้เรียน</th><th>ต่างชาติ</th></tr>
+              <tr><th>รหัส / ชื่อปอเนาะ</th><th>ที่อยู่</th><th>อำเภอ</th><th>ตำบล</th><th>โทรศัพท์</th><th>บุคลากร</th><th>ผู้เรียน</th><th>ต่างชาติ</th></tr>
             </thead>
-            <tbody id="dirBody"><tr><td colspan="9" class="text-center text-muted">กำลังโหลด...</td></tr></tbody>
+            <tbody id="dirBody"><tr><td colspan="8" class="text-center text-muted">กำลังโหลด...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -913,11 +913,13 @@
         norm(c.dist).includes(q) || norm(c.subdist).includes(q));
       $('dirCount').textContent = pondokList.length + ' รายการ';
       const body = $('dirBody');
-      if (!rows.length) { body.innerHTML = '<tr><td colspan="9" class="text-center text-muted">ไม่พบข้อมูล</td></tr>'; return; }
+      if (!rows.length) { body.innerHTML = '<tr><td colspan="8" class="text-center text-muted">ไม่พบข้อมูล</td></tr>'; return; }
       body.innerHTML = rows.map(c =>
         '<tr>' +
-        '<td><span class="addr-id">' + esc(c.id) + '</span></td>' +
-        '<td><span class="addr-name">' + esc(c.name) + '</span></td>' +
+        '<td><span class="addr-id">' + esc(c.id) + '</span><br>' +
+        '<span class="addr-name">' + esc(c.name) + '</span>' +
+        (c.coords ? '<br><span class="small text-muted">' + esc(c.coords) + '</span>' : '') +
+        '</td>' +
         '<td data-label="ที่อยู่">' + esc(c.address) + '</td>' +
         '<td data-label="อำเภอ">' + esc(c.dist) + '</td>' +
         '<td data-label="ตำบล">' + esc(c.subdist) + '</td>' +
