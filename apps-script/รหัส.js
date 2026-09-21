@@ -2,7 +2,7 @@ const SHEET_ID = '1qk9eLhwKgPvh2fLwWNSthV4JKyDkJGqJojhLDus5460';
 // ============================================================
 // ระบบนิเทศออนไลน์ สถาบันศึกษาปอเนาะ จ.นราธิวาส (แยกจากระบบตาดีกา)
 // ใช้ชีต ADDR_PONDOK + DATA_PONDOK + USERS ภายใน Spreadsheet เดียวกับระบบตาดีกา
-// โครงสร้างชีต ADDR_PONDOK (เริ่มข้อมูลจริงที่แถว 6):
+// โครงสร้างชีต ADDR_PONDOK (เริ่มข้อมูลจริงที่แถว 3):
 //   A=รหัส, B=ชื่อปอเนาะ, C=ที่อยู่, D=อำเภอ, E=ตำบล, F=โทรศัพท์,
 //   G=จำนวนบุคลากร, H=จำนวนผู้เรียน, I=จำนวนผู้เรียนต่างชาติ, J=พิกัดแผนที่
 // ============================================================
@@ -344,7 +344,7 @@ function offlineChatReply(msg) {
 // ---------------------------------------------------------
 // ฟังก์ชันสำหรับคำนวณและสรุปสถิติปอเนาะจาก Sheet ให้เป็นข้อความ Text
 //
-// โครงสร้างชีต ADDR_PONDOK (เริ่มข้อมูลจริงที่แถว 6):
+// โครงสร้างชีต ADDR_PONDOK (เริ่มข้อมูลจริงที่แถว 3):
 //   A=รหัส, B=ชื่อปอเนาะ, C=ที่อยู่, D=อำเภอ, E=ตำบล, F=โทรศัพท์,
 //   G=จำนวนบุคลากร, H=จำนวนผู้เรียน, I=จำนวนผู้เรียนต่างชาติ, J=พิกัดแผนที่
 // ---------------------------------------------------------
@@ -358,8 +358,8 @@ function fetchStatisticsForAI() {
 
   if (sheetPondok) {
     const lastRow = sheetPondok.getLastRow();
-    if (lastRow >= 6) {
-      const dataP = sheetPondok.getRange(6, 1, lastRow - 5, PONDOK_ADDR_COLS).getValues();
+    if (lastRow >= 3) {
+      const dataP = sheetPondok.getRange(3, 1, lastRow - 2, PONDOK_ADDR_COLS).getValues();
       for (let i = 0; i < dataP.length; i++) {
         if (String(dataP[i][0]).trim() != "") { // นับเฉพาะแถวที่มีรหัส
           pondokStats.count++;
@@ -493,8 +493,8 @@ function getPondokList() {
   const sheet = ss.getSheetByName(SHEET_ADDR_PONDOK);
   if(sheet) {
     const lastRow = sheet.getLastRow();
-    if(lastRow >= 6) {
-      const rows = sheet.getRange(6, 1, lastRow - 5, PONDOK_ADDR_COLS).getValues();
+    if(lastRow >= 3) {
+      const rows = sheet.getRange(3, 1, lastRow - 2, PONDOK_ADDR_COLS).getValues();
       for(let i = 0; i < rows.length; i++) {
         if(String(rows[i][0]).trim() !== '') {
           list.push({
@@ -546,8 +546,8 @@ function getStatsPondok() {
   const addr = ss.getSheetByName(SHEET_ADDR_PONDOK);
   if(addr) {
     const lastRow = addr.getLastRow();
-    if(lastRow >= 6) {
-      const vals = addr.getRange(6, 1, lastRow - 5, PONDOK_ADDR_COLS).getValues();
+    if(lastRow >= 3) {
+      const vals = addr.getRange(3, 1, lastRow - 2, PONDOK_ADDR_COLS).getValues();
       vals.forEach(r => {
         if(String(r[0]).trim() === '') return;
         totalPondok++;
@@ -587,8 +587,8 @@ function getPondokData(id) {
   const sheet = ss.getSheetByName(SHEET_ADDR_PONDOK);
   if(sheet) {
     const lastRow = sheet.getLastRow();
-    if(lastRow >= 6) {
-      const rows = sheet.getRange(6, 1, lastRow - 5, PONDOK_ADDR_COLS).getValues();
+    if(lastRow >= 3) {
+      const rows = sheet.getRange(3, 1, lastRow - 2, PONDOK_ADDR_COLS).getValues();
       for(let i = 0; i < rows.length; i++) {
         if(String(rows[i][0]).trim() === id) {
           return {
@@ -620,11 +620,11 @@ function savePondokPin(payload) {
   const sheet = ss.getSheetByName(SHEET_ADDR_PONDOK);
   if (!sheet) return {success: false, message: 'ไม่พบชีต ADDR_PONDOK'};
   const lastRow = sheet.getLastRow();
-  if (lastRow < 6) return {success: false, message: 'ไม่มีข้อมูลปอเนาะ'};
-  const ids = sheet.getRange(6, 1, lastRow - 5, 1).getValues();
+  if (lastRow < 3) return {success: false, message: 'ไม่มีข้อมูลปอเนาะ'};
+  const ids = sheet.getRange(3, 1, lastRow - 2, 1).getValues();
   for (let i = 0; i < ids.length; i++) {
     if (String(ids[i][0]).trim() === id) {
-      sheet.getRange(6 + i, 10).setValue(coords);
+      sheet.getRange(3 + i, 10).setValue(coords);
       return {success: true, message: 'บันทึกพิกัดแผนที่เรียบร้อย'};
     }
   }
@@ -640,7 +640,7 @@ function savePondokEvaluation(payload) {
 
   const addrSheet = ss.getSheetByName(SHEET_ADDR_PONDOK);
   const addrRow = Number(t.row || 0);
-  if (addrSheet && addrRow >= 6 && addrRow <= addrSheet.getLastRow()) {
+  if (addrSheet && addrRow >= 3 && addrRow <= addrSheet.getLastRow()) {
     const rowId = String(addrSheet.getRange(addrRow, 1).getValue()).trim();
     if (rowId && rowId === String(t.id || '').trim()) {
       addrSheet.getRange(addrRow, 2, 1, 8).setValues([[
