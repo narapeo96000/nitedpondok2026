@@ -291,7 +291,11 @@
       color: var(--amber-dark); border: 1px solid var(--amber-soft); border-radius: 999px;
       padding: 5px 16px; font-size: .8rem; font-weight: 600;
     }
-    .app-footer {
+    .download-card { background: linear-gradient(135deg, #f0fdfa, #fff7ed); border: 1px solid var(--primary-soft); }
+    .download-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .download-link { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: #fff; color: var(--primary-deep); text-decoration: none; font-weight: 600; font-size: .9rem; }
+    .download-link:hover { border-color: var(--primary); background: var(--primary-light); }
+    @media (max-width: 640px) { .download-grid { grid-template-columns: 1fr; } }    .app-footer {
       text-align: center; color: var(--muted); font-size: .78rem;
       padding: 10px 14px 22px; line-height: 1.7;
     }
@@ -332,7 +336,11 @@
       .header-banner h3 { font-size: 1.02rem; }
       .brand .logo { width: 64px; height: 64px; font-size: 2rem; }
       .brand h1 { font-size: 1.22rem; }
-      .app-footer { font-size: .72rem; }
+      .download-card { background: linear-gradient(135deg, #f0fdfa, #fff7ed); border: 1px solid var(--primary-soft); }
+    .download-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .download-link { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: #fff; color: var(--primary-deep); text-decoration: none; font-weight: 600; font-size: .9rem; }
+    .download-link:hover { border-color: var(--primary); background: var(--primary-light); }
+    @media (max-width: 640px) { .download-grid { grid-template-columns: 1fr; } }    .app-footer { font-size: .72rem; }
       .col-3, .col-md-3 { width: 50%; }
       .ap-table { font-size: .78rem; }
       #chat-widget { width: 100%; max-width: 100vw; bottom: 0; right: 0; border-radius: 16px 16px 0 0; padding-bottom: env(safe-area-inset-bottom); }
@@ -414,6 +422,14 @@
         </div>
       </div>
 
+      <div class="card download-card">
+        <div class="card-title"><h4>📚 ดาวน์โหลดแผนและเครื่องมือนิเทศ</h4><span class="badge">PDF</span></div>
+        <div class="download-grid">
+          <a class="download-link" href="https://drive.google.com/file/d/1gVkRj1wq8TjmxEZfq7cLJ035yUggpMaQ/view?usp=sharing" target="_blank" rel="noopener">🏫 โรงเรียนเอกชน</a>
+          <a class="download-link" href="https://drive.google.com/file/d/1nuGVzZshKssSgGjSSEkkWkDU8FVSkwTP/view?usp=sharing" target="_blank" rel="noopener">🕌 ปอเนาะ</a>
+          <a class="download-link" href="https://drive.google.com/file/d/1qm2s3AO5r7A2h7HKuUnB_QmI5tKuTJVC/view?usp=sharing" target="_blank" rel="noopener">📖 ตาดีกา</a>
+        </div>
+      </div>
       <div class="app-footer">
         ระบบนิเทศออนไลน์สำหรับสถาบันศึกษาปอเนาะ จังหวัดนราธิวาส<br>
         ฐานข้อมูลร่วมกับระบบนิเทศตาดีกา/ศอม. — สรุปผลเชิงสถิติระดับจังหวัด
