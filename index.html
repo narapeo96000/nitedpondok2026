@@ -411,16 +411,7 @@
           <label style="font-size:.86rem; display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" id="showPass" onchange="togglePassword()"> แสดงรหัสผ่าน</label>
           <label style="font-size:.86rem; display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" id="rememberPass"> จดจำรหัสผ่าน</label>
         </div>
-        <label>เลือกสถาบันปอเนาะที่จะนิเทศ <span class="small text-muted">(พิมพ์ค้นหาได้)</span></label>
-        <div class="position-relative">
-          <input type="text" id="lgPondokSearch" class="form-control" placeholder="ชื่อปอเนาะ / ที่อยู่ / ตำบล / อำเภอ..."
-                 autocomplete="off" oninput="filterPondok('lg')" onkeydown="pondokKey('lg', event)">
-          <div id="lgPondokSuggest" class="suggest-box d-none"></div>
-        </div>
-        <div id="lgSelInfo" class="info-box d-none">
-          <b id="lgSelName"></b><br>
-          <span id="lgSelDetail" class="small text-muted"></span>
-        </div>
+        <p class="small text-muted">เลือกสถานที่นิเทศได้หลังเข้าสู่ระบบ</p>
         <button class="btn btn-primary w-100 mt-3" id="loginBtn" onclick="handleLogin(event)">เข้าสู่ระบบ</button>
         <p class="text-center mt-3 mb-0 small">
           ยังไม่มีบัญชี? <a href="javascript:void(0)" style="color:var(--primary); font-weight:600;" onclick="showRegister()">สมัครสมาชิก</a>
@@ -504,7 +495,8 @@
 
       <!-- เลือกศูนย์ -->
       <div class="card">
-        <div class="card-title"><h4>เลือกสถาบันปอเนาะ</h4><span class="badge" id="selBadge">ยังไม่ได้เลือก</span></div>
+        <div class="card-title" id="pondokSelectTitle"><h4>เลือกสถาบันปอเนาะ</h4><span class="badge" id="selBadge">ยังไม่ได้เลือก</span></div>
+        <p class="small text-muted">เลือกหรือเปลี่ยนสถานที่นิเทศได้ที่นี่ โดยไม่ต้องเข้าสู่ระบบใหม่</p>
         <div class="position-relative">
           <input type="text" id="selPondokSearch" class="form-control" placeholder="พิมพ์ชื่อปอเนาะ / ที่อยู่ / ตำบล / อำเภอ..."
                  autocomplete="off" oninput="filterPondok('sel')" onkeydown="pondokKey('sel', event)">
@@ -536,7 +528,7 @@
           <div class="card">
             <div class="card-title">
               <h4>ข้อมูลสถาบัน (แก้ไขได้)</h4>
-              <div style="display:flex; gap:8px; align-items:center;"><span class="badge lv lv-blue">ปอเนาะ</span><button type="button" class="btn btn-outline2 btn-sm" onclick="backToSelect()">เปลี่ยนศูนย์</button></div>
+              <div style="display:flex; gap:8px; align-items:center;"><span class="badge lv lv-blue">ปอเนาะ</span><button type="button" class="btn btn-outline2 btn-sm" onclick="backToSelect()">เปลี่ยนสถานที่นิเทศ</button></div>
             </div>
             <input type="hidden" id="t_row">
             <input type="hidden" id="t_type">
@@ -879,6 +871,7 @@
     function showRegister() { newCaptcha(); showOnly(['registerSection']); }
 
     function doLogout() {
+      clearPondokSelection();
       session = { username: '', fname: '', tel: '', role: '' };
       try { localStorage.removeItem('pondok_session'); } catch (e) {}
       showLogin();
@@ -915,7 +908,6 @@
       const u = $('loginUser').value.trim();
       const p = $('loginPass').value.trim();
       if (!u || !p) { Swal.fire({ icon: 'warning', title: 'กรอก Username และ Password' }); return; }
-      if (!selectedPondok) { Swal.fire({ icon: 'warning', title: 'กรุณาเลือกสถาบันปอเนาะที่จะนิเทศก่อน' }); return; }
       $('loginBtn').disabled = true;
       try {
         const res = await api('login', { username: u, password: p });
@@ -952,6 +944,7 @@
     }
 
     function enterApp() {
+      clearPondokSelection();
       showOnly(['appSection']);
       $('headerUserText').textContent = '👤 ' + session.fname;
       $('headerUserText2').textContent = '(' + session.username + ')';
@@ -1009,8 +1002,8 @@
     }
 
     function filterPondok(ctx) {
-      const q = $(ctx === 'lg' ? 'lgPondokSearch' : 'selPondokSearch').value;
-      const box = $(ctx === 'lg' ? 'lgPondokSuggest' : 'selPondokSuggest');
+      const q = $('selPondokSearch').value;
+      const box = $('selPondokSuggest');
       const items = pondokMatches(q);
       if (!items.length) { box.classList.add('d-none'); box.innerHTML = ''; return; }
       box.innerHTML = items.map((c, i) =>
@@ -1023,34 +1016,32 @@
 
     function pondokKey(ctx, ev) {
       if (ev.key === 'Escape') {
-        $(ctx === 'lg' ? 'lgPondokSuggest' : 'selPondokSuggest').classList.add('d-none');
+        $('selPondokSuggest').classList.add('d-none');
       }
     }
 
-    function pickPondok(ctx, idx) {
+    async function pickPondok(ctx, idx) {
       const c = pondokList[idx];
-      if (!c) return;
-      const inp = $(ctx === 'lg' ? 'lgPondokSearch' : 'selPondokSearch');
-      const box = $(ctx === 'lg' ? 'lgPondokSuggest' : 'selPondokSuggest');
+      if (!c || !session.username) return;
+      if (selectedPondok && String(selectedPondok.id) !== String(c.id)) {
+        if (!await confirmPondokChange()) return;
+        clearPondokSelection();
+      }
+      const inp = $('selPondokSearch');
+      const box = $('selPondokSuggest');
       inp.value = c.name;
       box.classList.add('d-none');
       const detail = [c.address, c.subdist, c.dist].filter(Boolean).join(' ');
-      if (ctx === 'lg') {
-        $('lgSelInfo').classList.remove('d-none');
-        $('lgSelName').textContent = c.id + ' · ' + c.name;
-        $('lgSelDetail').textContent = detail + (c.phone ? ' · ☎ ' + c.phone : '');
-      } else {
-        $('selectedInfo').classList.remove('d-none');
-        $('selName').textContent = c.id + ' · ' + c.name;
-        $('selDetail').textContent = detail + (c.phone ? ' · ☎ ' + c.phone : '');
-      }
+      $('selectedInfo').classList.remove('d-none');
+      $('selName').textContent = c.id + ' · ' + c.name;
+      $('selDetail').textContent = detail + (c.phone ? ' · ☎ ' + c.phone : '');
       selectedPondok = Object.assign({}, c);
       $('selBadge').textContent = 'เลือกแล้ว: ' + c.name;
       $('startBtn').disabled = false;
     }
 
     document.addEventListener('click', ev => {
-      ['lgPondokSuggest', 'selPondokSuggest'].forEach(id => {
+      ['selPondokSuggest'].forEach(id => {
         const b = $(id);
         if (b && !b.classList.contains('d-none') && !b.contains(ev.target)) b.classList.add('d-none');
       });
@@ -1080,8 +1071,10 @@
 
     // ===================== Evaluation flow =====================
     async function startEvaluation() {
-      if (!selectedPondok) return;
+      if (!selectedPondok || !session.username) return;
+      const selection = selectedPondok;
       const res = await api('getPondokData', { id: selectedPondok.id });
+      if (selectedPondok !== selection || !session.username) return;
       if (!res.success) { Swal.fire({ icon: 'error', title: 'ไม่พบข้อมูลศูนย์' }); return; }
       selectedPondok = Object.assign({}, res.data);
       fillCenterInputs();
@@ -1112,9 +1105,35 @@
       $('p_foreign').value = t.foreign != null ? t.foreign : '';
     }
 
-    function backToSelect() {
+    function clearPondokSelection() {
+      selectedPondok = null;
+      history = [];
+      resetEvalState();
+      $('mainForm').reset();
+      $('selPondokSearch').value = '';
+      $('selPondokSuggest').classList.add('d-none');
+      $('selectedInfo').classList.add('d-none');
+      $('selBadge').textContent = 'ยังไม่ได้เลือก';
+      $('startBtn').disabled = true;
+      $('dashCard').classList.add('section-hidden');
       $('evaluationSection').classList.add('section-hidden');
-      $('evaluationSection').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    async function confirmPondokChange() {
+      if ($('evaluationSection').classList.contains('section-hidden')) return true;
+      const result = await Swal.fire({
+        icon: 'warning', title: 'เปลี่ยนสถานที่นิเทศ?',
+        text: 'ข้อมูลที่ยังไม่ได้บันทึกจะถูกล้าง ข้อมูลที่บันทึกแล้วจะยังคงอยู่',
+        showCancelButton: true, confirmButtonText: 'เปลี่ยนสถานที่', cancelButtonText: 'ยกเลิก'
+      });
+      return result.isConfirmed;
+    }
+
+    async function backToSelect() {
+      if (!await confirmPondokChange()) return;
+      clearPondokSelection();
+      $('pondokSelectTitle').scrollIntoView({ behavior: 'smooth' });
+      $('selPondokSearch').focus();
     }
 
     // ---- ปักหมุดพิกัดแผนที่ (ดาวเทียม) ----
@@ -1225,7 +1244,9 @@
 
     // ---- History ----
     async function loadHistory() {
+      const selection = selectedPondok;
       const res = await api('getEvaluations', String(selectedPondok.id));
+      if (selectedPondok !== selection || !session.username) return;
       history = [];
       if (res.success) history = res.data.filter(h => h.type === 'ปอเนาะ');
       renderHistory();

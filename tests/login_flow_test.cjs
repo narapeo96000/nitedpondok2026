@@ -1,0 +1,59 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const html = fs.readFileSync(require('node:path').join(__dirname, '../index.html'), 'utf8');
+assert(!html.includes('lgPondokSearch'), 'Login must not contain a location picker');
+const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+new vm.Script(script); // Check the complete inline script, including boot.
+const elements = new Map();
+for (const [, id] of html.matchAll(/id="([^"]+)"/g)) {
+  const classes = new Set(['section-hidden']);
+  elements.set(id, { value: '', checked: false, disabled: false, textContent: '',
+    classList: { add: c => classes.add(c), remove: c => classes.delete(c),
+      contains: c => classes.has(c), toggle: (c, on) => on ? classes.add(c) : classes.delete(c) },
+    reset() {}, scrollIntoView() {}, focus() {} });
+}
+const storage = new Map();
+const ctx = vm.createContext({ console, document: {
+  getElementById: id => { assert(elements.has(id), `Unknown element: ${id}`); return elements.get(id); },
+  addEventListener() {}
+}, window: { scrollTo() {} }, localStorage: {
+  getItem: k => storage.get(k), setItem: (k, v) => storage.set(k, v), removeItem: k => storage.delete(k)
+}, Swal: { fire: async () => ({ isConfirmed: true }) } });
+vm.runInContext(script.slice(0, script.indexOf('// ===================== Boot')), ctx);
+async function run(code) { return await vm.runInContext(code, ctx); }
+(async () => {
+  await run(`api = async () => ({success: true, userData: {username: 'tester', fname: 'Test', role: 'user'}});
+    $('loginUser').value = 'tester'; $('loginPass').value = 'test';`);
+  await run('handleLogin()');
+  assert.equal(await run('session.username'), 'tester');
+  assert.equal(await run('selectedPondok'), null);
+  assert.equal(elements.get('appSection').classList.contains('section-hidden'), false);
+  assert.equal(elements.get('startBtn').disabled, true);
+  await run(`pondokList = [{id: 'A', name: 'A'}, {id: 'B', name: 'B'}]; pickPondok('sel', 0)`);
+  assert.equal(await run('selectedPondok.id'), 'A');
+  await run(`$('evaluationSection').classList.remove('section-hidden'); answers = {test: 3};
+    Swal.fire = async () => ({isConfirmed: false});`);
+  await run("pickPondok('sel', 1)");
+  assert.equal(await run('selectedPondok.id'), 'A');
+  await run('Swal.fire = async () => ({isConfirmed: true})');
+  await run("pickPondok('sel', 1)");
+  assert.equal(await run('selectedPondok.id'), 'B');
+  assert.equal(await run('Object.keys(answers).length'), 0);
+  assert.equal(await run('session.username'), 'tester');
+  assert(storage.has('pondok_session'));
+  assert.equal(elements.get('evaluationSection').classList.contains('section-hidden'), true);
+  await run('backToSelect()');
+  assert.equal(await run('selectedPondok'), null);
+  assert.equal(await run('session.username'), 'tester');
+  await run(`pickPondok('sel', 0)`);
+  await run(`let finishRequest; api = () => new Promise(resolve => {finishRequest = resolve});
+    let pendingStart = startEvaluation();`);
+  await run('backToSelect()');
+  await run(`finishRequest({success: true, data: {id: 'A'}}); pendingStart`);
+  assert.equal(await run('selectedPondok'), null, 'Late response must not restore old selection');
+  await run('doLogout()');
+  assert.equal(await run('session.username'), '');
+  assert(!storage.has('pondok_session'));
+  console.log('PASS: login without location; select; cancel/confirm switch; session retained; stale response; logout');
+})().catch(e => { console.error(e); process.exitCode = 1; });
