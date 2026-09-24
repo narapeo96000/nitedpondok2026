@@ -574,15 +574,12 @@
 
           <div class="card" id="reportsCard">
             <div class="card-title"><h4>📊 รายงานผลการนิเทศ</h4><span class="badge">AI · Preview · PDF</span></div>
-            <p class="small text-muted">แบบรายงาน 1–8 จัดหน้าตามคำตอบและคะแนนที่บันทึกไว้ ส่วนรายงานสรุปให้ AI สังเคราะห์จากประวัติการนิเทศเพื่อ preview ก่อนพิมพ์หรือบันทึก PDF</p>
+            <p class="small text-muted">แสดงแบบรายงานที่ 8 จากคำตอบและคะแนนที่บันทึกไว้ พร้อมรายงานสรุปจากประวัติการนิเทศ รวมข้อมูลเดิม เพื่อ preview ก่อนพิมพ์หรือบันทึก PDF</p>
             <div class="report-toolbar">
               <div><label for="reportKind">รูปแบบรายงาน</label>
                 <select id="reportKind" class="form-select" onchange="updateReportOptions()">
                   <option value="summary">รายงานสรุปผลการนิเทศ (ทุกแบบ)</option>
-                  <option value="1">แบบที่ 1 · สำรวจข้อมูลพื้นฐานและความพร้อม</option><option value="2">แบบที่ 2 · บริหารและใช้หลักสูตร</option>
-                  <option value="3">แบบที่ 3 · วิเคราะห์แผนการสอน</option><option value="4">แบบที่ 4 · สังเกตการจัดการเรียนรู้</option>
-                  <option value="5">แบบที่ 5 · ติดตามการวัดและประเมินผล</option><option value="6">แบบที่ 6 · สะท้อนผลและแผนพัฒนา (AAR)</option>
-                  <option value="7">แบบที่ 7 · นิเทศโดยผู้ไม่ใช่ศึกษานิเทศก์</option><option value="8">แบบที่ 8 · บันทึกภาคสนามผู้ไม่ใช่ศึกษานิเทศก์</option>
+                  <option value="8">แบบที่ 8 · บันทึกภาคสนามผู้ไม่ใช่ศึกษานิเทศก์ (32 คะแนน)</option>
                 </select>
               </div>
               <div id="reportRecordWrap" class="section-hidden"><label for="reportRecord">รายการนิเทศที่ใช้</label><select id="reportRecord" class="form-select"></select></div>
@@ -594,7 +591,7 @@
           <!-- บันทึกการนิเทศ -->
           <div class="card">
             <div class="card-title">
-              <h4>แบบนิเทศ ติดตาม และประเมินผล (8 ฉบับ)</h4>
+              <h4>แบบที่ 8 · บันทึกภาคสนามสำหรับผู้ไม่ใช่ศึกษานิเทศก์ (32 คะแนน)</h4>
             </div>
             <div id="editBanner" class="alert alert-warn d-none">
               <b>กำลังแก้ไขบันทึก</b> เมื่อ <span id="editInfo"></span>
@@ -611,7 +608,6 @@
               <option value="ครั้งที่ 3 (มกราคม)">ครั้งที่ 3 · มกราคม — ประเมินการเปลี่ยนแปลง (AAR)</option>
             </select>
 
-            <div class="tabs" id="formTabs"></div>
             <div id="formPanels"></div>
 
             <div class="total-box">
@@ -821,7 +817,9 @@
     let pondokList = [];
     let selectedPondok = null;
     let history = [];
-    let curForm = 0;
+    // Keep all definitions for historical records and summary reports.
+    const ACTIVE_FORM_INDEX = FORMS.findIndex(f => f.no === 8);
+    let curForm = ACTIVE_FORM_INDEX;
     let editTarget = null;
     let answers = {}, notes = {}, multiVals = {};
     let f6 = { strengths: '', improve: '', support: '', agreements: '', comment: '' };
@@ -1082,8 +1080,7 @@
       $('dashName').textContent = selectedPondok.name;
       $('evaluationSection').classList.remove('section-hidden');
       resetEvalState();
-      buildTabs();
-      switchForm(0);
+      switchForm(ACTIVE_FORM_INDEX);
       $('pinCard').style.display = '';
       initPinMap();
       await loadHistory();
@@ -1277,7 +1274,7 @@
           '<td>' + pctCell + '</td>' +
           '<td><span class="' + lvlClass(h.level) + '">' + esc(h.level || '-') + '</span></td>' +
           '<td>' + esc(h.supervisor || '-') + '</td>' +
-          '<td><button type="button" class="btn btn-sm btn-outline" onclick="editRecord(' + i + ')">✏️</button>' + delBtn + '</td>' +
+          '<td>' + ((Number(d.formNo) === 8 || String(h.formType || '').trim() === 'แบบที่ 8') ? '<button type="button" class="btn btn-sm btn-outline" onclick="editRecord(' + i + ')">✏️</button>' : '<span class="small text-muted">ข้อมูลเดิม · รวมในรายงานสรุป</span>') + delBtn + '</td>' +
           '</tr>';
       }).join('');
     }
@@ -1329,6 +1326,7 @@
       const d = h.details || {};
       const fi = FORMS.findIndex(f => f.no === Number(d.formNo) || ('แบบที่ ' + f.no) === String(h.formType || '').trim());
       if (fi < 0) { Swal.fire({ icon: 'error', title: 'ไม่พบแบบฟอร์มของรายการนี้' }); return; }
+      if (fi !== ACTIVE_FORM_INDEX) { Swal.fire({ icon: 'info', title: 'เปิดใช้งานเฉพาะแบบที่ 8', text: 'ข้อมูลเดิมยังคงใช้ในรายงานสรุปได้' }); return; }
       editTarget = { row: h.row };
       $('editRow').value = h.row;
       $('editType').value = h.type;
@@ -1352,8 +1350,7 @@
       $('editType').value = '';
       $('editBanner').classList.add('d-none');
       resetEvalState();
-      buildTabs();
-      switchForm(curForm);
+      switchForm(ACTIVE_FORM_INDEX);
     }
 
     function resetEvalState() {
@@ -1368,16 +1365,10 @@
       $('evalRound').value = '';
     }
 
-    // ---- Tabs & panels ----
-    function buildTabs() {
-      $('formTabs').innerHTML = FORMS.map((f, i) =>
-        '<button type="button" class="tab form-tab form-tab-' + f.no + '" id="tab-' + i + '" onclick="switchForm(' + i + ')">' +
-        esc(f.short) + '<span class="tab-sub">' + esc(f.scored ? (f.max + ' คะแนน') : 'เชิงคุณภาพ') + '</span></button>').join('');
-    }
-
+    // ---- Single active evaluation form ----
     function switchForm(i) {
+      if (i !== ACTIVE_FORM_INDEX) return;
       curForm = i;
-      FORMS.forEach((f, k) => $('tab-' + k).classList.toggle('active', k === i));
       renderPanel(i);
       recalc();
     }

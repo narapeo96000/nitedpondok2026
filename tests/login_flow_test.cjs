@@ -3,6 +3,9 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const html = fs.readFileSync(require('node:path').join(__dirname, '../index.html'), 'utf8');
 assert(!html.includes('lgPondokSearch'), 'Login must not contain a location picker');
+assert(!html.includes('id="formTabs"'), 'Only one form page, without form tabs');
+const reportOptions = html.match(/<select id="reportKind"[\s\S]*?<\/select>/)[0];
+assert.deepEqual([...reportOptions.matchAll(/value="([^"]+)"/g)].map(m => m[1]), ['summary', '8']);
 const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 new vm.Script(script); // Check the complete inline script, including boot.
 const elements = new Map();
@@ -23,6 +26,18 @@ const ctx = vm.createContext({ console, document: {
 vm.runInContext(script.slice(0, script.indexOf('// ===================== Boot')), ctx);
 async function run(code) { return await vm.runInContext(code, ctx); }
 (async () => {
+  assert.equal(await run('FORMS[curForm].no'), 8, 'Default to form 8');
+  assert.equal(await run('FORMS[curForm].max'), 32);
+  await run('switchForm(0)');
+  assert.equal(await run('FORMS[curForm].no'), 8, 'Disabled forms cannot be opened');
+  await run(`answers = {}; FORMS[curForm].sections.forEach(sec => sec.items.forEach((item, i) => { answers[sec.code + '.' + i] = 2; })); recalc();`);
+  assert.equal(elements.get('totalScore').value, 32);
+  assert.equal(elements.get('pctScore').value, 100);
+  for (let no = 1; no <= 8; no++) {
+    const report = await run(`reportRecordData({details: {formNo: ${no}, answers: {}}, formType: 'แบบที่ ${no}'})`);
+    assert.equal(report.formNo, no);
+    assert(report.formName, 'Legacy form definitions remain available for summary');
+  }
   await run(`api = async () => ({success: true, userData: {username: 'tester', fname: 'Test', role: 'user'}});
     $('loginUser').value = 'tester'; $('loginPass').value = 'test';`);
   await run('handleLogin()');
@@ -75,7 +90,7 @@ async function run(code) { return await vm.runInContext(code, ctx); }
   `);
   assert.equal(await run('levelInputs.map(i => i.checked).join()'), 'true,false,true', 'Restore checked state');
   await run(`
-    selectedPondok = {id: 'A'}; $('evalRound').value = '1'; curForm = 0;
+    selectedPondok = {id: 'A'}; $('evalRound').value = '1'; curForm = ACTIVE_FORM_INDEX;
     let savedPayload;
     api = async (action, payload) => { savedPayload = payload; return {success: false}; };
     submitFinal({preventDefault() {}});
