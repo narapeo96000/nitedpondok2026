@@ -52,8 +52,37 @@ async function run(code) { return await vm.runInContext(code, ctx); }
   await run('backToSelect()');
   await run(`finishRequest({success: true, data: {id: 'A'}}); pendingStart`);
   assert.equal(await run('selectedPondok'), null, 'Late response must not restore old selection');
+  await run(`
+    const levelCode = FORMS[0].sections[0].code + '.0';
+    const levelInputs = ['อิบติดาอียะฮฺ', 'มุตะวัซซิเฎาะฮฺ', 'อาลียะฮฺ'].map(value => {
+      const label = {dataset: {o: value}, classList: {toggle(name, checked) { this.on = checked; }}};
+      const input = {checked: true, parentElement: label};
+      label.querySelector = () => input;
+      toggleMulti(input, levelCode);
+      return input;
+    });
+  `);
+  assert.equal(await run('multiVals[levelCode].length'), 3, 'Multiple levels can be selected');
+  await run('toggleMulti(levelInputs[0], levelCode)');
+  assert.equal(await run('multiVals[levelCode].length'), 3, 'Repeated change does not deselect');
+  await run('levelInputs[1].checked = false; toggleMulti(levelInputs[1], levelCode)');
+  assert.equal(await run('multiVals[levelCode].length'), 2, 'One level can be deselected');
+  await run(`
+    document.querySelectorAll = selector => selector === '#formPanels .multi-box[data-multi]'
+      ? [{dataset: {multi: levelCode}, querySelectorAll: () => levelInputs.map(i => i.parentElement)}] : [];
+    levelInputs.forEach(i => { i.checked = false; });
+    applyState(FORMS[0]);
+  `);
+  assert.equal(await run('levelInputs.map(i => i.checked).join()'), 'true,false,true', 'Restore checked state');
+  await run(`
+    selectedPondok = {id: 'A'}; $('evalRound').value = '1'; curForm = 0;
+    let savedPayload;
+    api = async (action, payload) => { savedPayload = payload; return {success: false}; };
+    submitFinal({preventDefault() {}});
+  `);
+  assert.deepEqual(Array.from(await run('savedPayload.evalData.answers[levelCode]')).sort(), ['อิบติดาอียะฮฺ', 'อาลียะฮฺ'].sort(), 'Save selected levels');
   await run('doLogout()');
   assert.equal(await run('session.username'), '');
   assert(!storage.has('pondok_session'));
-  console.log('PASS: login without location; select; cancel/confirm switch; session retained; stale response; logout');
+  console.log('PASS: login; switch location; session; stale response; multi-select/deselect/restore/save; logout');
 })().catch(e => { console.error(e); process.exitCode = 1; });

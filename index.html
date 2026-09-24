@@ -1411,7 +1411,7 @@
               it.options.map(o => '<option value="' + esc(o) + '">' + esc(o) + '</option>').join('') + '</select>';
           } else if (it.type === 'multi') {
             html += '<div class="multi-box" data-multi="' + code + '">' +
-              it.options.map(o => '<label class="cb" data-o="' + esc(o) + '" onclick="toggleMulti(this,\'' + code + '\')"><input type="checkbox" style="display:none">' + esc(o) + '</label>').join('') +
+              it.options.map(o => '<label class="cb" data-o="' + esc(o) + '"><input type="checkbox" onchange="toggleMulti(this,\'' + code + '\')">' + esc(o) + '</label>').join('') +
               '</div>';
           }
           if (it.note) {
@@ -1487,9 +1487,13 @@
       document.querySelectorAll('#formPanels select[data-sel]').forEach(sl => {
         if (answers[sl.dataset.sel] !== undefined) sl.value = answers[sl.dataset.sel];
       });
-      document.querySelectorAll('#formPanels .multi-box').forEach(mb => {
+      document.querySelectorAll('#formPanels .multi-box[data-multi]').forEach(mb => {
         const vals = multiVals[mb.dataset.multi] || [];
-        mb.querySelectorAll('.cb').forEach(cb => cb.classList.toggle('on', vals.includes(cb.dataset.o)));
+        mb.querySelectorAll('.cb').forEach(cb => {
+          const checked = vals.includes(cb.dataset.o);
+          cb.classList.toggle('on', checked);
+          cb.querySelector('input').checked = checked;
+        });
       });
       document.querySelectorAll('#formPanels textarea[data-note]').forEach(t => {
         if (notes[t.dataset.note] !== undefined) t.value = notes[t.dataset.note];
@@ -1527,13 +1531,13 @@
       if (sl.value === '') delete answers[code]; else answers[code] = sl.value;
     }
 
-    function toggleMulti(cb, code) {
-      const arr = multiVals[code] || [];
+    function toggleMulti(input, code) {
+      const cb = input.parentElement;
       const o = cb.dataset.o;
-      const ix = arr.indexOf(o);
-      if (ix >= 0) arr.splice(ix, 1); else arr.push(o);
+      const arr = (multiVals[code] || []).filter(value => value !== o);
+      if (input.checked) arr.push(o);
       multiVals[code] = arr;
-      cb.classList.toggle('on', ix < 0);
+      cb.classList.toggle('on', input.checked);
     }
 
     function noteInput(t) {
@@ -1753,7 +1757,7 @@
         totalScore: $('totalScore').value,
         pct: $('pctScore').value,
         level: $('levelScore').value,
-        answers: Object.assign({}, answers),
+        answers: Object.assign({}, answers, multiVals),
         notes: Object.assign({}, notes),
         summary: f.no === 8 ? Object.assign({}, f7sum) : {},
         actionPlan: f.qualitative ? apRows.filter(r => r.issue || r.activity) : [],
