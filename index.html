@@ -369,6 +369,28 @@
       #reportPreview h2,#reportPreview h3 { break-after:avoid; }
       #reportPreview .report-content,#reportPreview .report-meta { break-inside:avoid; }
     }
+    /* Field-friendly navigation and readable touch targets. */
+    :focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
+    .work-nav { display:flex; gap:8px; flex-wrap:wrap; padding:12px; background:#fff; border:1px solid var(--border); border-radius:14px; margin-bottom:16px; }
+    .work-nav a { padding:10px 14px; border-radius:10px; color:var(--primary-deep); background:var(--primary-light); text-decoration:none; font-weight:600; }
+    .work-nav a:first-child { background:var(--primary); color:#fff; }
+    .workflow-intro { padding:6px 2px 16px; }
+    .workflow-intro h2 { margin:0 0 6px; font-size:1.35rem; color:var(--primary-deep); }
+    .workflow-intro p { margin:0; color:var(--muted); line-height:1.7; }
+    .progress-box { background:var(--primary-light); border:1px solid #99d5ce; padding:14px; border-radius:12px; margin-bottom:18px; }
+    .progress-box progress { display:block; width:100%; height:10px; margin-top:10px; accent-color:var(--primary); }
+    .search-status { margin:8px 0; line-height:1.6; color:var(--muted); }
+    .q-scale button { min-height:44px; }
+    .card[id] { scroll-margin-top:16px; }
+    @media (max-width:640px) {
+      .card-title { flex-wrap:wrap; gap:10px; }
+      .work-nav { display:grid; grid-template-columns:1fr 1fr; }
+      .work-nav a { text-align:center; padding:12px 6px; font-size:.9rem; }
+      .header-banner { flex-wrap:wrap; gap:12px; }
+      .btn-sm { min-height:44px; }
+      .q-scale { gap:8px; }
+    }
+    @media (prefers-reduced-motion: reduce) { * { scroll-behavior:auto !important; } }
   </style>
 </head>
 <body>
@@ -403,10 +425,10 @@
       </div>
       <div class="card auth-card">
         <h4 class="text-center mb-3" style="color:var(--primary-deep); margin-top:0;">เข้าสู่ระบบ</h4>
-        <label>Username</label>
-        <input type="text" id="loginUser" class="form-control mb-3">
-        <label>Password</label>
-        <input type="password" id="loginPass" class="form-control" onkeypress="if(event.key==='Enter') handleLogin(event)">
+        <label for="loginUser">ชื่อผู้ใช้</label>
+        <input type="text" id="loginUser" class="form-control mb-3" autocomplete="username" autocapitalize="none">
+        <label for="loginPass">รหัสผ่าน</label>
+        <input type="password" id="loginPass" class="form-control" autocomplete="current-password" onkeypress="if(event.key==='Enter') handleLogin(event)">
         <div style="display:flex; gap:16px; align-items:center; margin:8px 0 12px;">
           <label style="font-size:.86rem; display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" id="showPass" onchange="togglePassword()"> แสดงรหัสผ่าน</label>
           <label style="font-size:.86rem; display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" id="rememberPass"> จดจำรหัสผ่าน</label>
@@ -477,6 +499,10 @@
 
     <!-- ===== หน้าหลัก (หลังล็อกอิน) ===== -->
     <div id="appSection" class="section-hidden">
+      <div class="workflow-intro">
+        <h2>เริ่มนิเทศปอเนาะ</h2>
+        <p>1. เลือกสถานที่ → 2. กรอกแบบที่ 8 → 3. บันทึกและดูรายงาน</p>
+      </div>
 
       <!-- จัดการผู้ใช้ (ผู้ดูแลระบบ) -->
       <div id="adminCard" class="card section-hidden">
@@ -494,14 +520,17 @@
       </div>
 
       <!-- เลือกศูนย์ -->
-      <div class="card">
+      <div class="card" id="selectionCard">
         <div class="card-title" id="pondokSelectTitle"><h4>เลือกสถาบันปอเนาะ</h4><span class="badge" id="selBadge">ยังไม่ได้เลือก</span></div>
         <p class="small text-muted">เลือกหรือเปลี่ยนสถานที่นิเทศได้ที่นี่ โดยไม่ต้องเข้าสู่ระบบใหม่</p>
         <div class="position-relative">
-          <input type="text" id="selPondokSearch" class="form-control" placeholder="พิมพ์ชื่อปอเนาะ / ที่อยู่ / ตำบล / อำเภอ..."
-                 autocomplete="off" oninput="filterPondok('sel')" onkeydown="pondokKey('sel', event)">
+          <label for="selPondokSearch">ค้นหาปอเนาะที่จะนิเทศ</label>
+          <input type="search" id="selPondokSearch" class="form-control" placeholder="พิมพ์ชื่อปอเนาะ ตำบล หรืออำเภอ"
+                 autocomplete="off" onfocus="filterPondok('sel')" oninput="filterPondok('sel')" onkeydown="pondokKey('sel', event)">
           <div id="selPondokSuggest" class="suggest-box d-none"></div>
         </div>
+        <p id="pondokLoadStatus" class="search-status small" role="status">กำลังโหลดรายชื่อปอเนาะ…</p>
+        <button type="button" id="retryPondokBtn" class="btn btn-outline2 section-hidden" onclick="loadPondokList()">ลองโหลดรายชื่ออีกครั้ง</button>
         <div id="selectedInfo" class="info-box d-none">
           <b id="selName"></b><br>
           <span id="selDetail" class="small text-muted"></span>
@@ -522,10 +551,16 @@
 
       <!-- แบบประเมิน -->
       <div id="evaluationSection" class="section-hidden">
+        <nav class="work-nav" aria-label="เมนูการนิเทศ">
+          <a href="#evaluationCard">กรอกแบบนิเทศ</a>
+          <a href="#instituteCard">ข้อมูลสถาบัน</a>
+          <a href="#historyCard">ประวัติการนิเทศ</a>
+          <a href="#reportsCard">รายงาน / PDF</a>
+        </nav>
         <form id="mainForm" onsubmit="submitFinal(event)">
 
           <!-- ข้อมูลศูนย์ -->
-          <div class="card">
+          <div class="card" id="instituteCard">
             <div class="card-title">
               <h4>ข้อมูลสถาบัน (แก้ไขได้)</h4>
               <div style="display:flex; gap:8px; align-items:center;"><span class="badge lv lv-blue">ปอเนาะ</span><button type="button" class="btn btn-outline2 btn-sm" onclick="backToSelect()">เปลี่ยนสถานที่นิเทศ</button></div>
@@ -558,7 +593,7 @@
           </div>
 
           <!-- ประวัติ -->
-          <div class="card">
+          <div class="card" id="historyCard">
             <div class="card-title"><h4>ประวัติการนิเทศของสถาบันนี้</h4><span class="badge" id="histCount">0 รายการ</span></div>
             <div class="table-wrap">
               <table>
@@ -589,7 +624,7 @@
             <div id="reportPreview" class="report-preview mt-3 section-hidden" aria-live="polite"></div>
           </div>
           <!-- บันทึกการนิเทศ -->
-          <div class="card">
+          <div class="card" id="evaluationCard">
             <div class="card-title">
               <h4>แบบที่ 8 · บันทึกภาคสนามสำหรับผู้ไม่ใช่ศึกษานิเทศก์ (32 คะแนน)</h4>
             </div>
@@ -599,8 +634,13 @@
             </div>
             <input type="hidden" id="editRow">
             <input type="hidden" id="editType">
+            <div class="progress-box">
+              <b id="answerProgressText" role="status">ตอบแล้ว 0 จาก 16 ข้อ</b>
+              <progress id="answerProgress" value="0" max="16" aria-label="ความคืบหน้าการตอบแบบนิเทศ"></progress>
+              <p class="small mb-0">เลือกคะแนนแต่ละข้อ แล้วกดบันทึกท้ายแบบฟอร์ม ข้อมูลจะบันทึกเมื่อกดปุ่มบันทึกเท่านั้น</p>
+            </div>
 
-            <label>📅 รอบการนิเทศ (ตามแผนปีละ 3 ครั้ง)</label>
+            <label for="evalRound">📅 รอบการนิเทศ <span class="text-muted">(จำเป็นต้องเลือก)</span></label>
             <select id="evalRound" class="form-select mb-3" onchange="">
               <option value="">— เลือกรอบการนิเทศ —</option>
               <option value="ครั้งที่ 1 (พฤษภาคม)">ครั้งที่ 1 · พฤษภาคม — รู้สภาพและกำหนดประเด็น</option>
@@ -624,10 +664,11 @@
             <div class="alert alert-info mt-3">
               <b>เกณฑ์การตัดระดับ (เฉพาะแบบที่ให้คะแนน)</b><br>
               80% ขึ้นไป = ดีมาก · 60–79% = ดี · 40–59% = พอใช้ · ต่ำกว่า 40% = ต้องปรับปรุง<br>
-              <span class="small">แบบที่ 1, 3, 5, 6 เป็นเครื่องมือเชิงคุณภาพ — ไม่ใช้เพื่อจัดอันดับ</span>
+              <span class="small">แบบที่ 8 คะแนนเต็ม 32 คะแนน หากเลือก N/A ระบบจะปรับคะแนนเต็มตามข้อที่ประเมินได้</span>
             </div>
 
-            <button type="submit" class="btn btn-primary w-100 mt-3 py-3" id="finalSubmitBtn">💾 บันทึกการนิเทศและอัปเดตข้อมูลสถาบัน</button>
+            <button type="submit" class="btn btn-primary w-100 mt-3 py-3" id="finalSubmitBtn">💾 บันทึกผลการนิเทศ</button>
+            <p class="small text-muted text-center">บันทึกคำตอบพร้อมข้อมูลสถาบันที่แก้ไข แล้วดูผลได้ในประวัติการนิเทศ</p>
           </div>
         </form>
       </div>
@@ -907,6 +948,7 @@
       const p = $('loginPass').value.trim();
       if (!u || !p) { Swal.fire({ icon: 'warning', title: 'กรอก Username และ Password' }); return; }
       $('loginBtn').disabled = true;
+      $('loginBtn').textContent = 'กำลังเข้าสู่ระบบ…';
       try {
         const res = await api('login', { username: u, password: p });
         if (!res.success) { Swal.fire({ icon: 'error', title: 'เข้าสู่ระบบไม่สำเร็จ', html: esc(res.message || '') }); return; }
@@ -922,6 +964,7 @@
         Swal.fire({ icon: 'error', title: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', text: String(err) });
       } finally {
         $('loginBtn').disabled = false;
+        $('loginBtn').textContent = 'เข้าสู่ระบบ';
       }
     }
 
@@ -985,10 +1028,17 @@
     function norm(s) { return String(s == null ? '' : s).toLowerCase(); }
 
     async function loadPondokList() {
+      $('pondokLoadStatus').textContent = 'กำลังโหลดรายชื่อปอเนาะ…';
+      $('retryPondokBtn').classList.add('section-hidden');
       try {
         const res = await api('getPondokList');
-        if (res.success) { pondokList = res.data; renderDir(); }
-      } catch (e) {}
+        if (!res.success || !Array.isArray(res.data)) throw new Error('Load failed');
+        pondokList = res.data; renderDir();
+        $('pondokLoadStatus').textContent = 'พร้อมค้นหา ' + pondokList.length + ' สถาบัน · เลือกจากรายการแล้วกดเริ่มการนิเทศ';
+      } catch (e) {
+        $('pondokLoadStatus').textContent = 'โหลดรายชื่อไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง';
+        $('retryPondokBtn').classList.remove('section-hidden');
+      }
     }
 
     function pondokMatches(q) {
@@ -1003,9 +1053,9 @@
       const q = $('selPondokSearch').value;
       const box = $('selPondokSuggest');
       const items = pondokMatches(q);
-      if (!items.length) { box.classList.add('d-none'); box.innerHTML = ''; return; }
+      if (!items.length) { box.classList.remove('d-none'); box.innerHTML = '<p class="search-status" style="padding:12px">' + (pondokList.length ? 'ไม่พบปอเนาะที่ค้นหา ลองใช้ชื่อสั้น ๆ หรือตำบล / อำเภอ' : 'ยังไม่มีรายชื่อพร้อมใช้งาน โปรดตรวจสอบสถานะการโหลดด้านล่าง') + '</p>'; return; }
       box.innerHTML = items.map((c, i) =>
-        '<button type="button" class="suggest-item" data-i="' + i + '" onmousedown="pickPondok(\'' + ctx + '\',' + pondokList.indexOf(c) + ')">' +
+        '<button type="button" class="suggest-item" data-i="' + i + '" onclick="pickPondok(\'' + ctx + '\',' + pondokList.indexOf(c) + ')">' +
         '<span class="addr-id">' + esc(c.id) + '</span> <span class="addr-name">' + esc(c.name) + '</span><br>' +
         '<span class="small text-muted">' + esc([c.address, c.subdist, c.dist].filter(Boolean).join(' ')) + '</span></button>').join('');
       box.classList.remove('d-none');
@@ -1041,7 +1091,7 @@
     document.addEventListener('click', ev => {
       ['selPondokSuggest'].forEach(id => {
         const b = $(id);
-        if (b && !b.classList.contains('d-none') && !b.contains(ev.target)) b.classList.add('d-none');
+        if (b && !b.classList.contains('d-none') && !b.parentElement.contains(ev.target)) b.classList.add('d-none');
       });
     });
 
@@ -1070,7 +1120,14 @@
     // ===================== Evaluation flow =====================
     async function startEvaluation() {
       if (!selectedPondok || !session.username) return;
+      if (!$('evaluationSection').classList.contains('section-hidden')) {
+        $('evaluationCard').scrollIntoView({ behavior: 'smooth' });
+        return;
+      }
       const selection = selectedPondok;
+      $('startBtn').disabled = true;
+      $('startBtn').textContent = 'กำลังเปิดแบบนิเทศ…';
+      try {
       const res = await api('getPondokData', { id: selectedPondok.id });
       if (selectedPondok !== selection || !session.username) return;
       if (!res.success) { Swal.fire({ icon: 'error', title: 'ไม่พบข้อมูลศูนย์' }); return; }
@@ -1083,8 +1140,14 @@
       switchForm(ACTIVE_FORM_INDEX);
       $('pinCard').style.display = '';
       initPinMap();
-      await loadHistory();
       $('evaluationSection').scrollIntoView({ behavior: 'smooth' });
+      await loadHistory();
+      } catch (err) {
+        Swal.fire({ icon: 'error', title: 'โหลดข้อมูลไม่สำเร็จ', text: 'กรุณาตรวจสอบอินเทอร์เน็ต แล้วลองเปิดสถานที่อีกครั้ง' });
+      } finally {
+        $('startBtn').disabled = !selectedPondok;
+        $('startBtn').textContent = $('evaluationSection').classList.contains('section-hidden') ? '🚀 เริ่มการนิเทศ' : 'กลับไปแบบนิเทศที่กำลังกรอก';
+      }
     }
 
     function fillCenterInputs() {
@@ -1113,6 +1176,7 @@
       $('selBadge').textContent = 'ยังไม่ได้เลือก';
       $('startBtn').disabled = true;
       $('dashCard').classList.add('section-hidden');
+      $('startBtn').textContent = '🚀 เริ่มการนิเทศ';
       $('evaluationSection').classList.add('section-hidden');
     }
 
@@ -1646,6 +1710,11 @@
     // ---- Scoring ----
     function recalc() {
       const f = FORMS[curForm];
+      const questions = f.sections.flatMap(sec => sec.items.map((it, i) => ({ it, code: sec.code + '.' + i }))).filter(q => q.it.scale);
+      const completed = questions.filter(q => answers[q.code] !== undefined).length;
+      $('answerProgressText').textContent = 'ตอบแล้ว ' + completed + ' จาก ' + questions.length + ' ข้อ';
+      $('answerProgress').max = questions.length || 1;
+      $('answerProgress').value = completed;
       $('totalLabel').textContent = f.short + ' · ' + f.name;
       if (!f.scored) {
         $('maxLabel').textContent = '—';
@@ -1765,6 +1834,7 @@
       };
       if (editTarget) { payloadData.editRow = editTarget.row; }
       $('finalSubmitBtn').disabled = true;
+      $('finalSubmitBtn').textContent = 'กำลังบันทึก…';
       try {
         const res = await api('savePondokEvaluation', payloadData);
         if (!res.success) { Swal.fire({ icon: 'error', title: 'บันทึกไม่สำเร็จ', html: esc(res.message || '') }); return; }
@@ -1775,6 +1845,7 @@
         Swal.fire({ icon: 'error', title: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', text: String(err) });
       } finally {
         $('finalSubmitBtn').disabled = false;
+        $('finalSubmitBtn').textContent = '💾 บันทึกผลการนิเทศ';
       }
     }
 
@@ -1794,7 +1865,7 @@
       $('printReportBtn').disabled = true;
       $('generateReportBtn').textContent = kind === 'summary' ? '✨ สร้างรายงานสรุปด้วย AI' : '👁️ สร้าง Preview แบบฟอร์ม';
       $('reportHelp').textContent = kind === 'summary'
-        ? 'AI จะสังเคราะห์ประวัติการนิเทศ 10 รายการล่าสุด กรุณาตรวจสอบก่อนใช้ และต้องตั้งค่า Gemini API Key ใน Apps Script'
+        ? 'สรุปจากประวัติการนิเทศ 10 รายการล่าสุด กรุณาตรวจสอบความถูกต้องก่อนพิมพ์หรือส่งออก PDF'
         : 'รายงานรายแบบจัดรูปแบบจากคำตอบและคะแนนที่บันทึกไว้ ไม่ใช้ AI';
       $('reportRecordWrap').classList.toggle('section-hidden', kind === 'summary');
       if (kind === 'summary') return;
@@ -1976,14 +2047,15 @@
 
     // ===================== Boot =====================
     (async function boot() {
+      $('mainForm').prepend($('evaluationCard'));
       showLogin();
       restoreSavedLogin();
       newCaptcha();
-      await loadPondokList();
       try {
         const saved = JSON.parse(localStorage.getItem('pondok_session') || 'null');
         if (saved && saved.username) { session = saved; enterApp(); }
       } catch (e) {}
+      await loadPondokList();
     })();
   </script>
 </body>

@@ -33,6 +33,8 @@ async function run(code) { return await vm.runInContext(code, ctx); }
   await run(`answers = {}; FORMS[curForm].sections.forEach(sec => sec.items.forEach((item, i) => { answers[sec.code + '.' + i] = 2; })); recalc();`);
   assert.equal(elements.get('totalScore').value, 32);
   assert.equal(elements.get('pctScore').value, 100);
+  assert.equal(elements.get('answerProgress').value, 16, 'Progress tracks all scored questions');
+  assert.equal(elements.get('answerProgress').max, 16);
   for (let no = 1; no <= 8; no++) {
     const report = await run(`reportRecordData({details: {formNo: ${no}, answers: {}}, formType: 'แบบที่ ${no}'})`);
     assert.equal(report.formNo, no);
@@ -47,6 +49,9 @@ async function run(code) { return await vm.runInContext(code, ctx); }
   assert.equal(elements.get('startBtn').disabled, true);
   await run(`pondokList = [{id: 'A', name: 'A'}, {id: 'B', name: 'B'}]; pickPondok('sel', 0)`);
   assert.equal(await run('selectedPondok.id'), 'A');
+  await run(`$('evaluationSection').classList.remove('section-hidden'); answers = {draft: 1};
+    api = async () => { throw new Error('Must not reload an open evaluation'); }; startEvaluation();`);
+  assert.equal(await run('answers.draft'), 1, 'Reopening current form keeps the draft');
   await run(`$('evaluationSection').classList.remove('section-hidden'); answers = {test: 3};
     Swal.fire = async () => ({isConfirmed: false});`);
   await run("pickPondok('sel', 1)");
@@ -99,5 +104,10 @@ async function run(code) { return await vm.runInContext(code, ctx); }
   await run('doLogout()');
   assert.equal(await run('session.username'), '');
   assert(!storage.has('pondok_session'));
+  await run(`session = {username: 'tester'}; selectedPondok = {id: 'A'};
+    api = async () => { throw new Error('Network offline'); }; startEvaluation();`);
+  assert.equal(elements.get('startBtn').disabled, false, 'Failed loading can be retried');
+  await run('loadPondokList()');
+  assert.equal(elements.get('retryPondokBtn').classList.contains('section-hidden'), false, 'List loading offers retry');
   console.log('PASS: login; switch location; session; stale response; multi-select/deselect/restore/save; logout');
 })().catch(e => { console.error(e); process.exitCode = 1; });
