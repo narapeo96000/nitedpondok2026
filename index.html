@@ -597,7 +597,7 @@
           </div>
 
           <!-- ประวัติ -->
-          <div class="card" id="historyCard">
+          <div class="card section-hidden" id="historyCard">
             <div class="card-title"><h4>ประวัติการนิเทศของสถาบันนี้</h4><span class="badge" id="histCount">0 รายการ</span></div>
             <div class="table-wrap">
               <table>
@@ -1090,6 +1090,7 @@
       selectedPondok = Object.assign({}, c);
       $('selBadge').textContent = 'เลือกแล้ว: ' + c.name;
       $('startBtn').disabled = false;
+      $('historyCard').classList.remove('section-hidden');
     }
 
     document.addEventListener('click', ev => {
@@ -1181,6 +1182,7 @@
       $('startBtn').disabled = true;
       $('dashCard').classList.add('section-hidden');
       $('startBtn').textContent = '🚀 เริ่มการนิเทศ';
+      $('historyCard').classList.add('section-hidden');
       $('evaluationSection').classList.add('section-hidden');
     }
 
@@ -2060,6 +2062,7 @@
 
     // ===================== Boot =====================
     (async function boot() {
+      $('selectionCard').after($('historyCard'));
       showLogin();
       restoreSavedLogin();
       newCaptcha();
