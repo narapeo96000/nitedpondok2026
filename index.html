@@ -1895,7 +1895,10 @@
         if (answer === undefined || answer === null || answer === '') answer = 'ยังไม่บันทึก';
         else if (item.scale) {
           const opt = item.scale.find(o => String(o.v) === String(answer));
-          if (opt) answer = opt.t;
+          const descriptions = { '2': 'ทำได้ชัดเจน', '1': 'กำลังพัฒนา', '0': 'ต้องช่วยเหลือ', 'NA': 'ไม่นำมาพิจารณา', 'N/A': 'ไม่นำมาพิจารณา' };
+          if (no === 8 && Object.prototype.hasOwnProperty.call(descriptions, String(answer))) {
+            answer = descriptions[String(answer)];
+          } else if (opt) answer = opt.t;
         } else if (Array.isArray(answer)) answer = answer.join(', ');
         observations.push({ section: sec.title, item: item.text, result: answer, note: notes[code] || '' });
       }));

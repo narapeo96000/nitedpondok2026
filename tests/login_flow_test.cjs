@@ -28,6 +28,11 @@ async function run(code) { return await vm.runInContext(code, ctx); }
 (async () => {
   assert.equal(await run('FORMS[curForm].no'), 8, 'Default to form 8');
   assert.equal(await run('FORMS[curForm].max'), 32);
+  for (const [value, description] of [[2, 'ทำได้ชัดเจน'], ['1', 'กำลังพัฒนา'], [0, 'ต้องช่วยเหลือ'], ['NA', 'ไม่นำมาพิจารณา'], ['N/A', 'ไม่นำมาพิจารณา']]) {
+    const report = await run(`reportRecordData({details: {formNo: 8, answers: {'F8.C.0': ${JSON.stringify(value)}}}, totalScore: 12})`);
+    assert.equal(report.observations[12].result, description);
+    assert.equal(report.score, 12, 'Report descriptions must not change total scores');
+  }
   await run('switchForm(0)');
   assert.equal(await run('FORMS[curForm].no'), 8, 'Disabled forms cannot be opened');
   await run(`answers = {}; FORMS[curForm].sections.forEach(sec => sec.items.forEach((item, i) => { answers[sec.code + '.' + i] = 2; })); recalc();`);
