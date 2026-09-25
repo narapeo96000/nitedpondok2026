@@ -359,6 +359,10 @@
     .report-content p { margin:0 0 10px; }
     .report-content ul { padding-left:24px; margin:6px 0 12px; }
     .report-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
+    .report-signatures { display:grid; grid-template-columns:1fr 1fr; gap:24px 36px; margin:44px 12px 8px; color:var(--ink); }
+    .report-signatures p { margin:0; text-align:center; }
+    .report-signatures .sign-date { grid-column:1 / -1; }
+    @media print { .report-signatures { break-inside:avoid; page-break-inside:avoid; } }
     @media (max-width:640px) { .report-toolbar { grid-template-columns:1fr; } .report-preview { padding:16px; } }
     @media print {
       @page { size:A4; margin:18mm; }
@@ -1914,6 +1918,12 @@
       };
     }
 
+    function reportSignatureBlock() {
+      return '<div class="report-signatures"><p>ลงชื่อผู้รับผิดชอบศูนย์ ........................................</p>' +
+        '<p>ลงชื่อผู้นิเทศ ........................................</p>' +
+        '<p class="sign-date">วันที่ ........................................</p></div>';
+    }
+
     function renderFormReport(record) {
       const institute = { name: selectedPondok.name || '', id: selectedPondok.id || '', address: [selectedPondok.address, selectedPondok.subdist, selectedPondok.dist].filter(Boolean).join(' ') };
       const sections = [];
@@ -1940,7 +1950,7 @@
       const report = $('reportPreview');
       report.innerHTML = '<div class="report-meta small text-muted">สำนักงานการศึกษาเอกชนจังหวัดนราธิวาส</div><h2>แบบรายงานผลการนิเทศ · แบบที่ ' + esc(record.formNo) + ' ' + esc(record.formName) + '</h2>' +
         '<div class="report-meta"><b>สถาบัน:</b> ' + esc(institute.name) + ' (' + esc(institute.id) + ')<br><b>ที่ตั้ง:</b> ' + esc(institute.address || 'ไม่ระบุ') + '<br><b>รอบ:</b> ' + esc(record.round || 'ไม่ระบุ') + '<br><b>วันที่:</b> ' + esc(record.date || 'ไม่ระบุ') + '<br><b>ผู้นิเทศ:</b> ' + esc(record.supervisor || 'ไม่ระบุ') + '</div>' + score + (sections.join('') || '<p>แบบบันทึกเชิงคุณภาพ</p>') + extra +
-        '<p class="small text-muted" style="border-top:1px solid #ddd;padding-top:10px;margin-top:20px;">จัดรูปแบบจากข้อมูลที่บันทึกในระบบ กรุณาตรวจสอบความครบถ้วนก่อนพิมพ์หรือส่งออก PDF</p>';
+        '<p class="small text-muted" style="border-top:1px solid #ddd;padding-top:10px;margin-top:20px;">จัดรูปแบบจากข้อมูลที่บันทึกในระบบ กรุณาตรวจสอบความครบถ้วนก่อนพิมพ์หรือส่งออก PDF</p>' + reportSignatureBlock();
       report.classList.remove('section-hidden');
       $('printReportBtn').disabled = false;
       report.scrollIntoView({ behavior:'smooth', block:'start' });
@@ -2005,7 +2015,7 @@
         const dates = records.map(r => r.date).filter(Boolean);
         report.innerHTML = '<div class="report-meta small text-muted">สำนักงานการศึกษาเอกชนจังหวัดนราธิวาส · ฉบับร่างเพื่อทบทวน</div><h2>📄 ' + esc(kindName) + '</h2>' +
           '<div class="report-meta"><b>สถาบัน:</b> ' + esc(institute.name) + ' (' + esc(institute.id) + ')<br><b>ที่ตั้ง:</b> ' + esc(institute.address || 'ไม่ระบุ') + '<br><b>ช่วงวันที่:</b> ' + esc(dates.join(' – ') || 'ไม่ระบุ') + '<br><b>จำนวนรายการที่ใช้:</b> ' + records.length + '</div><hr><div class="report-content">' + reportMarkdownHtml(res.reply) + '</div>' +
-          '<p class="small text-muted" style="border-top:1px solid #ddd;padding-top:10px;margin-top:20px;">ฉบับร่างจาก AI กรุณาตรวจสอบข้อเท็จจริงก่อนนำไปใช้</p>';
+          '<p class="small text-muted" style="border-top:1px solid #ddd;padding-top:10px;margin-top:20px;">ฉบับร่างจาก AI กรุณาตรวจสอบข้อเท็จจริงก่อนนำไปใช้</p>' + reportSignatureBlock();
         report.classList.remove('section-hidden');
         $('printReportBtn').disabled = false;
         Swal.close();
