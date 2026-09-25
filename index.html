@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>ปอเนาะ-ระบบนิเทศออนไลน์ จ.นราธิวาส</title>
 
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.20/dist/sweetalert2.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/@ckeditor/ckeditor5-build-classic@41.3.1/build/ckeditor.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.20/dist/sweetalert2.all.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <link rel="icon" href="data:,">
 
   <style>
@@ -1246,9 +1246,32 @@
     // ---- ปักหมุดพิกัดแผนที่ (ดาวเทียม) ----
     let pinMap = null, pinMarker = null, pinDraft = null;
 
-    function initPinMap() {
+    let leafletPromise = null;
+
+    function loadLeaflet() {
+      if (window.L) return Promise.resolve(window.L);
+      if (leafletPromise) return leafletPromise;
+      leafletPromise = new Promise((resolve, reject) => {
+        const css = document.createElement('link');
+        css.rel = 'stylesheet';
+        css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(css);
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        script.onload = () => resolve(window.L);
+        script.onerror = () => reject(new Error('โหลดแผนที่ไม่สำเร็จ'));
+        document.head.appendChild(script);
+      });
+      return leafletPromise;
+    }
+
+    async function initPinMap() {
       const box = $('pinMapBox');
-      if (!box || typeof L === 'undefined') return;
+      if (!box) return;
+      try { await loadLeaflet(); } catch (e) {
+        $('pinStatus').textContent = 'โหลดแผนที่ไม่สำเร็จ แต่ยังสามารถบันทึกข้อมูลนิเทศได้';
+        return;
+      }
       if (pinMap) { pinMap.invalidateSize(); updatePinView(); return; }
       pinMap = L.map(box).setView([6.425, 101.822], 9);
       const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' });
