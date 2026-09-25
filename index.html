@@ -381,18 +381,33 @@
     .workflow-intro { padding:6px 2px 16px; }
     .workflow-intro h2 { margin:0 0 6px; font-size:1.35rem; color:var(--primary-deep); }
     .workflow-intro p { margin:0; color:var(--muted); line-height:1.7; }
+    .workflow-steps { display:flex; align-items:center; gap:8px; margin-top:14px; }
+    .workflow-step { flex:1; display:flex; align-items:center; gap:7px; min-width:0; color:#94a3b8; font-size:.86rem; font-weight:600; }
+    .workflow-step .step-dot { width:28px; height:28px; flex:0 0 28px; display:grid; place-items:center; border-radius:50%; background:#e2e8f0; color:#64748b; }
+    .workflow-step .step-label { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .workflow-step.done,.workflow-step.active { color:var(--primary-deep); }
+    .workflow-step.done .step-dot { background:var(--green-soft); color:var(--green-dark); }
+    .workflow-step.active .step-dot { background:var(--primary); color:#fff; box-shadow:0 0 0 4px var(--primary-soft); }
+    .workflow-line { height:2px; flex:0 0 24px; background:#e2e8f0; }
+    .workflow-line.done { background:#86d8cf; }
+    .selection-tip { display:flex; align-items:flex-start; gap:8px; padding:10px 12px; background:#fffbeb; border:1px solid #fde68a; border-radius:10px; margin-top:12px; color:#92400e; line-height:1.55; }
     .progress-box { background:var(--primary-light); border:1px solid #99d5ce; padding:14px; border-radius:12px; margin-bottom:18px; }
     .progress-box progress { display:block; width:100%; height:10px; margin-top:10px; accent-color:var(--primary); }
     .search-status { margin:8px 0; line-height:1.6; color:var(--muted); }
     .q-scale button { min-height:44px; }
     .card[id] { scroll-margin-top:16px; }
-    @media (max-width:640px) {
+      @media (max-width:640px) {
       .card-title { flex-wrap:wrap; gap:10px; }
       .work-nav { display:grid; grid-template-columns:1fr 1fr; }
       .work-nav a { text-align:center; padding:12px 6px; font-size:.9rem; }
       .header-banner { flex-wrap:wrap; gap:12px; }
       .btn-sm { min-height:44px; }
       .q-scale { gap:8px; }
+      .workflow-steps { gap:4px; }
+      .workflow-line { flex-basis:10px; }
+      .workflow-step { display:block; text-align:center; font-size:.76rem; }
+      .workflow-step .step-dot { margin:0 auto 4px; }
+      .workflow-step .step-label { display:block; }
     }
     @media (prefers-reduced-motion: reduce) { * { scroll-behavior:auto !important; } }
   </style>
@@ -506,6 +521,13 @@
       <div class="workflow-intro">
         <h2>เริ่มนิเทศปอเนาะ</h2>
         <p>1. เลือกสถานที่ → 2. กรอกแบบที่ 8 → 3. บันทึกและดูรายงาน</p>
+        <div class="workflow-steps" aria-label="ขั้นตอนการนิเทศ">
+          <div class="workflow-step active" id="stepSelect"><span class="step-dot">1</span><span class="step-label">เลือกปอเนาะ</span></div>
+          <span class="workflow-line" id="stepLine1"></span>
+          <div class="workflow-step" id="stepHistory"><span class="step-dot">2</span><span class="step-label">ดูประวัติ</span></div>
+          <span class="workflow-line" id="stepLine2"></span>
+          <div class="workflow-step" id="stepForm"><span class="step-dot">3</span><span class="step-label">กรอกแบบที่ 8</span></div>
+        </div>
       </div>
 
       <!-- จัดการผู้ใช้ (ผู้ดูแลระบบ) -->
@@ -539,6 +561,7 @@
           <b id="selName"></b><br>
           <span id="selDetail" class="small text-muted"></span>
         </div>
+        <div class="selection-tip"><span>💡</span><span>เลือกปอเนาะแล้วดูประวัติเดิมได้ทันที จากนั้นกดปุ่มด้านล่างเพื่อเริ่มกรอกแบบนิเทศ</span></div>
         <button class="btn btn-success w-100 mt-3" id="startBtn" onclick="startEvaluation()" disabled>🚀 เริ่มการนิเทศ</button>
       </div>
 
@@ -597,8 +620,9 @@
           </div>
 
           <!-- ประวัติ -->
-          <div class="card section-hidden" id="historyCard">
-            <div class="card-title"><h4>ประวัติการนิเทศของสถาบันนี้</h4><span class="badge" id="histCount">0 รายการ</span></div>
+      <div class="card section-hidden" id="historyCard">
+        <div class="card-title"><h4>ประวัติการนิเทศของสถาบันนี้</h4><span class="badge" id="histCount">0 รายการ</span></div>
+        <p class="small text-muted">ตรวจสอบผลการนิเทศเดิมก่อนเริ่มแบบที่ 8 ได้ที่นี่</p>
             <div class="table-wrap">
               <table>
                 <thead>
@@ -990,6 +1014,7 @@
 
     function enterApp() {
       clearPondokSelection();
+      updateWorkflowSteps('select');
       showOnly(['appSection']);
       $('headerUserText').textContent = '👤 ' + session.fname;
       $('headerUserText2').textContent = '(' + session.username + ')';
@@ -1091,6 +1116,7 @@
       $('selBadge').textContent = 'เลือกแล้ว: ' + c.name;
       $('startBtn').disabled = false;
       $('historyCard').classList.remove('section-hidden');
+      updateWorkflowSteps('history');
     }
 
     document.addEventListener('click', ev => {
@@ -1141,6 +1167,7 @@
       $('dashCard').classList.remove('section-hidden');
       $('dashName').textContent = selectedPondok.name;
       $('evaluationSection').classList.remove('section-hidden');
+      updateWorkflowSteps('form');
       resetEvalState();
       switchForm(ACTIVE_FORM_INDEX);
       $('pinCard').style.display = '';
@@ -1184,6 +1211,19 @@
       $('startBtn').textContent = '🚀 เริ่มการนิเทศ';
       $('historyCard').classList.add('section-hidden');
       $('evaluationSection').classList.add('section-hidden');
+      updateWorkflowSteps('select');
+    }
+
+    function updateWorkflowSteps(stage) {
+      const order = { select: 0, history: 1, form: 2 };
+      ['select', 'history', 'form'].forEach((name, index) => {
+        const el = $('step' + name.charAt(0).toUpperCase() + name.slice(1));
+        if (!el) return;
+        el.classList.toggle('active', order[stage] === index);
+        el.classList.toggle('done', order[stage] > index);
+      });
+      $('stepLine1').classList.toggle('done', order[stage] > 0);
+      $('stepLine2').classList.toggle('done', order[stage] > 1);
     }
 
     async function confirmPondokChange() {
