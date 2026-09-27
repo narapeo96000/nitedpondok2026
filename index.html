@@ -1004,12 +1004,21 @@
       if (ev && ev.preventDefault) ev.preventDefault();
       const u = $('loginUser').value.trim();
       const p = $('loginPass').value.trim();
-      if (!u || !p) { Swal.fire({ icon: 'warning', title: 'กรอก Username และ Password' }); return; }
+      if (!u || !p) {
+        Swal.fire({ icon: 'warning', title: 'กรอกข้อมูลให้ครบถ้วน', text: 'กรุณากรอก Username และ Password ก่อนเข้าสู่ระบบ' });
+        (!u ? $('loginUser') : $('loginPass')).focus();
+        return;
+      }
       $('loginBtn').disabled = true;
       $('loginBtn').textContent = 'กำลังเข้าสู่ระบบ…';
+      showBusy('กำลังเข้าสู่ระบบ', 'กำลังตรวจสอบ Username และ Password');
       try {
         const res = await api('login', { username: u, password: p });
-        if (!res.success) { Swal.fire({ icon: 'error', title: 'เข้าสู่ระบบไม่สำเร็จ', html: esc(res.message || '') }); return; }
+        if (!res.success) {
+          closeBusy();
+          Swal.fire({ icon: 'error', title: 'เข้าสู่ระบบไม่สำเร็จ', html: esc(res.message || ''), confirmButtonText: 'ลองใหม่' });
+          return;
+        }
         session = res.userData;
         try { localStorage.setItem('pondok_session', JSON.stringify(session)); } catch (e) {}
         if ($('rememberPass').checked) {
@@ -1017,9 +1026,12 @@
         } else {
           try { localStorage.removeItem('pondok_login'); } catch (e) {}
         }
+        closeBusy();
         enterApp();
+        Swal.fire({ icon: 'success', title: 'เข้าสู่ระบบสำเร็จ', text: 'ยินดีต้อนรับ ' + (session.fname || session.username), timer: 1500, showConfirmButton: false });
       } catch (err) {
-        Swal.fire({ icon: 'error', title: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', text: String(err) });
+        closeBusy();
+        Swal.fire({ icon: 'error', title: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', text: 'กรุณาตรวจสอบอินเทอร์เน็ต แล้วลองใหม่อีกครั้ง' });
       } finally {
         $('loginBtn').disabled = false;
         $('loginBtn').textContent = 'เข้าสู่ระบบ';
