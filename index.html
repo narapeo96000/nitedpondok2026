@@ -83,7 +83,32 @@
       outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(15,118,110,.15);
     }
     .form-control.bg-light { background: #f0faf8; border-color: transparent; }
-    textarea.form-control { min-height: 90px; resize: vertical; }
+    textarea, textarea.form-control {
+      display: block; width: 100%; min-height: 116px; resize: vertical;
+      border: 1.5px solid var(--border); border-radius: 14px;
+      padding: 12px 14px; font-size: 1rem; line-height: 1.65;
+      font-family: inherit; color: var(--ink); background: #fff;
+      transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+    }
+    textarea::placeholder { color: #94a3b8; opacity: 1; }
+    textarea:focus {
+      outline: none; border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(15,118,110,.14), 0 4px 12px rgba(15,118,110,.08);
+      background: #fcfffe;
+    }
+    textarea[data-note] { min-height: 82px; background: #fbfefd; }
+    textarea[data-note]:focus { background: #fff; }
+    .q-note {
+      padding: 10px 12px 12px; border: 1px solid var(--primary-soft);
+      border-radius: 12px; background: linear-gradient(135deg, #f8fffd, #fff);
+    }
+    .q-note label { margin-top: 0; color: var(--primary-deep); font-size: .84rem; }
+    .q-note textarea { margin-top: 5px; }
+    .form-section textarea + textarea { margin-top: 10px; }
+    @media (max-width: 640px) {
+      textarea, textarea.form-control { min-height: 126px; padding: 11px 12px; }
+      textarea[data-note] { min-height: 92px; }
+    }
     .row { display: flex; flex-wrap: wrap; margin: 0 -6px; }
     .col { padding: 0 6px; }
     .col-3 { width: 25%; } .col-4 { width: 33.33%; } .col-6 { width: 50%; } .col-12 { width: 100%; }
