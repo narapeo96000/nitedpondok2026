@@ -904,6 +904,14 @@
       return await r.json();
     }
 
+    function showBusy(title, text) {
+      Swal.fire({ title: title, text: text || '', allowOutsideClick: false, allowEscapeKey: false, showConfirmButton: false, didOpen: () => Swal.showLoading() });
+    }
+
+    function closeBusy() {
+      if (typeof Swal !== 'undefined' && Swal.isVisible()) Swal.close();
+    }
+
     function esc(s) {
       return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
     }
@@ -1054,6 +1062,7 @@
     function norm(s) { return String(s == null ? '' : s).toLowerCase(); }
 
     async function loadPondokList() {
+      showBusy('กำลังโหลดข้อมูล', 'กำลังโหลดรายชื่อสถาบันปอเนาะ');
       $('pondokLoadStatus').textContent = 'กำลังโหลดรายชื่อปอเนาะ…';
       $('retryPondokBtn').classList.add('section-hidden');
       try {
@@ -1064,6 +1073,8 @@
       } catch (e) {
         $('pondokLoadStatus').textContent = 'โหลดรายชื่อไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง';
         $('retryPondokBtn').classList.remove('section-hidden');
+      } finally {
+        closeBusy();
       }
     }
 
@@ -1155,10 +1166,11 @@
       const selection = selectedPondok;
       $('startBtn').disabled = true;
       $('startBtn').textContent = 'กำลังเปิดแบบนิเทศ…';
+      showBusy('กำลังโหลดข้อมูล', 'กำลังเตรียมข้อมูลสถาบันและประวัติการนิเทศ');
       try {
       const res = await api('getPondokData', { id: selectedPondok.id });
       if (selectedPondok !== selection || !session.username) return;
-      if (!res.success) { Swal.fire({ icon: 'error', title: 'ไม่พบข้อมูลศูนย์' }); return; }
+      if (!res.success) { closeBusy(); Swal.fire({ icon: 'error', title: 'ไม่พบข้อมูลศูนย์' }); return; }
       selectedPondok = Object.assign({}, res.data);
       fillCenterInputs();
       $('dashCard').classList.remove('section-hidden');
@@ -1171,7 +1183,10 @@
       initPinMap();
       $('evaluationSection').scrollIntoView({ behavior: 'smooth' });
       await loadHistory();
+      closeBusy();
+      Swal.fire({ icon: 'success', title: 'พร้อมเริ่มนิเทศ', text: 'เตรียมข้อมูลเรียบร้อยแล้ว', timer: 1100, showConfirmButton: false });
       } catch (err) {
+        closeBusy();
         Swal.fire({ icon: 'error', title: 'โหลดข้อมูลไม่สำเร็จ', text: 'กรุณาตรวจสอบอินเทอร์เน็ต แล้วลองเปิดสถานที่อีกครั้ง' });
       } finally {
         $('startBtn').disabled = !selectedPondok;
@@ -1321,7 +1336,11 @@
 
     async function savePin() {
       if (!selectedPondok || !pinDraft) { Swal.fire({ icon: 'warning', title: 'ยังไม่มีพิกัดที่จะบันทึก' }); return; }
-      const res = await api('savePondokPin', { id: selectedPondok.id, coords: pinDraft });
+      showBusy('กำลังบันทึกข้อมูล', 'กำลังบันทึกพิกัดของสถาบัน');
+      let res;
+      try { res = await api('savePondokPin', { id: selectedPondok.id, coords: pinDraft }); }
+      catch (e) { closeBusy(); Swal.fire({ icon: 'error', title: 'บันทึกไม่สำเร็จ', text: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้' }); return; }
+      closeBusy();
       Swal.fire({ icon: res.success ? 'success' : 'error', title: esc(res.message || '') });
       if (res.success) {
         selectedPondok.coords = pinDraft;
@@ -1449,6 +1468,7 @@
       $('evalRound').value = d.round || '';
       $('evaluationSection').scrollIntoView({ behavior: 'smooth' });
       switchForm(fi);
+      Swal.fire({ icon: 'success', title: 'เปิดข้อมูลเพื่อแก้ไขแล้ว', text: 'แก้ไขข้อมูลแล้วกดบันทึกผลการนิเทศด้านล่าง', timer: 1400, showConfirmButton: false });
     }
 
     function cancelEdit() {
@@ -1836,13 +1856,16 @@
       if (editTarget) { payloadData.editRow = editTarget.row; }
       $('finalSubmitBtn').disabled = true;
       $('finalSubmitBtn').textContent = 'กำลังบันทึก…';
+      showBusy(editTarget ? 'กำลังบันทึกการแก้ไข' : 'กำลังบันทึกข้อมูล', 'กำลังบันทึกผลการนิเทศและข้อมูลสถาบัน');
       try {
         const res = await api('savePondokEvaluation', payloadData);
-        if (!res.success) { Swal.fire({ icon: 'error', title: 'บันทึกไม่สำเร็จ', html: esc(res.message || '') }); return; }
+        if (!res.success) { closeBusy(); Swal.fire({ icon: 'error', title: 'บันทึกไม่สำเร็จ', html: esc(res.message || '') }); return; }
+        closeBusy();
         Swal.fire({ icon: 'success', title: editTarget ? 'แก้ไขเรียบร้อย!' : 'บันทึกเรียบร้อย!', html: esc(res.message || ''), timer: 2500, showConfirmButton: false });
         cancelEdit();
         await loadHistory();
       } catch (err) {
+        closeBusy();
         Swal.fire({ icon: 'error', title: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', text: String(err) });
       } finally {
         $('finalSubmitBtn').disabled = false;
