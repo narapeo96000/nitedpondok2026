@@ -1549,6 +1549,13 @@
       apRows = (d.actionPlan || []).map(r => Object.assign({}, r));
       f7sum = Object.assign({ good: '', develop: '', support: [], supportOther: '', agreement: '', followStatus: '', followChange: '', followEvidence: '', followSummary: '', followNext: '', followOwner: '', followDate: '', exit1: '', exit2: '', exit3: '', exit4: '' }, d.summary || {});
       $('evalRound').value = d.round || '';
+      if (selectedPondok) {
+        fillCenterInputs();
+        $('dashCard').classList.remove('section-hidden');
+        $('dashName').textContent = selectedPondok.name || '';
+      }
+      $('evaluationSection').classList.remove('section-hidden');
+      updateWorkflowSteps('form');
       $('evaluationSection').scrollIntoView({ behavior: 'smooth' });
       switchForm(fi);
       clearEvalDirty();
