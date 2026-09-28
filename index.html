@@ -386,6 +386,8 @@
     .report-content p { margin:0 0 10px; }
     .report-content ul { padding-left:24px; margin:6px 0 12px; }
     .report-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
+    .history-actions { display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; min-width:108px; }
+    .history-action { min-width:52px; padding-left:8px; padding-right:8px; }
     .report-signatures { display:grid; grid-template-columns:1fr 1fr; gap:24px 36px; margin:44px 12px 8px; color:var(--ink); }
     .report-signatures p { margin:0; text-align:center; }
     .report-signatures .sign-date { grid-column:1 / -1; }
@@ -649,11 +651,11 @@
           <!-- ประวัติ -->
       <div class="card section-hidden" id="historyCard">
         <div class="card-title"><h4>ประวัติการนิเทศของสถาบันนี้</h4><span class="badge" id="histCount">0 รายการ</span></div>
-        <p class="small text-muted">ตรวจสอบผลการนิเทศเดิมก่อนเริ่มแบบที่ 8 ได้ที่นี่</p>
+        <p class="small text-muted">ตรวจสอบผลการนิเทศเดิมได้ที่นี่ · แบบที่ 8 สามารถแก้ไขได้ และผู้ดูแลระบบสามารถลบรายการได้</p>
             <div class="table-wrap">
               <table>
                 <thead>
-                  <tr><th>#</th><th>บันทึกเมื่อ</th><th>รอบ</th><th>แบบ</th><th>คะแนน</th><th>ร้อยละ</th><th>ระดับ</th><th>ผู้นิเทศ</th><th></th></tr>
+                  <tr><th>#</th><th>บันทึกเมื่อ</th><th>รอบ</th><th>แบบ</th><th>คะแนน</th><th>ร้อยละ</th><th>ระดับ</th><th>ผู้นิเทศ</th><th>จัดการ</th></tr>
                 </thead>
                 <tbody id="histBody">
                   <tr><td colspan="9" class="text-center text-muted">ยังไม่มีประวัติการนิเทศ</td></tr>
@@ -1430,9 +1432,14 @@
         const d = h.details || {};
         const rnd = d.round || '-';
         const pctCell = (h.pct !== '' && h.pct != null && !isNaN(Number(h.pct))) ? Number(h.pct) + '%' : '—';
+        const isForm8 = Number(d.formNo) === 8 || String(h.formType || '').trim() === 'แบบที่ 8';
+        const editBtn = isForm8
+          ? '<button type="button" class="btn btn-sm btn-outline history-action" title="แก้ไขบันทึกนี้" onclick="editRecord(' + i + ')">แก้ไข</button>'
+          : '<span class="small text-muted">ข้อมูลเดิม</span>';
         const delBtn = session.role === 'ผู้ดูแลระบบ'
-          ? ' <button type="button" class="btn btn-sm btn-danger" onclick="deleteRecord(' + i + ')">🗑</button>'
+          ? '<button type="button" class="btn btn-sm btn-danger history-action" title="ลบบันทึกนี้" onclick="deleteRecord(' + i + ')">ลบ</button>'
           : '';
+        const actionHtml = '<div class="history-actions">' + editBtn + delBtn + '</div>';
         return '<tr>' +
           '<td>' + (history.length - i) + '</td>' +
           '<td>' + esc((h.timestamp || '').replace('T', ' ').slice(0, 16)) + '</td>' +
@@ -1442,7 +1449,7 @@
           '<td>' + pctCell + '</td>' +
           '<td><span class="' + lvlClass(h.level) + '">' + esc(h.level || '-') + '</span></td>' +
           '<td>' + esc(h.supervisor || '-') + '</td>' +
-          '<td>' + ((Number(d.formNo) === 8 || String(h.formType || '').trim() === 'แบบที่ 8') ? '<button type="button" class="btn btn-sm btn-outline" onclick="editRecord(' + i + ')">✏️</button>' : '<span class="small text-muted">ข้อมูลเดิม · รวมในรายงานสรุป</span>') + delBtn + '</td>' +
+          '<td>' + actionHtml + '</td>' +
           '</tr>';
       }).join('');
     }
@@ -1461,14 +1468,17 @@
         confirmButtonColor: '#ef4444'
       });
       if (!ask.isConfirmed) return;
+      showBusy('กำลังลบบันทึก', 'กำลังลบประวัติการนิเทศที่เลือก');
       try {
         const res = await api('deletePondokEvaluation', { username: session.username, row: h.row });
+        closeBusy();
         Swal.fire({ icon: res.success ? 'success' : 'error', title: esc(res.message || ''), timer: res.success ? 2200 : undefined, showConfirmButton: !res.success });
         if (res.success) {
           if (editTarget && editTarget.row === h.row) cancelEdit();
           await loadHistory();
         }
       } catch (e) {
+        closeBusy();
         Swal.fire({ icon: 'error', title: 'เชื่อมต่อไม่สำเร็จ', text: String(e) });
       }
     }
