@@ -650,7 +650,7 @@
 
           <!-- ประวัติ -->
       <div class="card section-hidden" id="historyCard">
-        <div class="card-title"><h4>ประวัติการนิเทศของสถาบันนี้</h4><span class="badge" id="histCount">0 รายการ</span></div>
+        <div class="card-title"><h4 id="historyTitle">ประวัติการนิเทศของสถาบันนี้</h4><span class="badge" id="histCount">0 รายการ</span></div>
         <p class="small text-muted">ตรวจสอบผลการนิเทศเดิมได้ที่นี่ · แบบที่ 8 สามารถแก้ไขได้ และผู้ดูแลระบบสามารถลบรายการได้</p>
             <div class="table-wrap">
               <table>
@@ -1167,6 +1167,7 @@
       $('selName').textContent = c.id + ' · ' + c.name;
       $('selDetail').textContent = detail + (c.phone ? ' · ☎ ' + c.phone : '');
       selectedPondok = Object.assign({}, c);
+      $('historyTitle').textContent = 'ประวัติการนิเทศสถาบันปอเนาะ ' + c.name;
       $('selBadge').textContent = 'เลือกแล้ว: ' + c.name;
       $('startBtn').disabled = false;
       $('historyCard').classList.remove('section-hidden');
@@ -1292,6 +1293,7 @@
     function clearPondokSelection() {
       selectedPondok = null;
       history = [];
+      $('historyTitle').textContent = 'ประวัติการนิเทศของสถาบันนี้';
       resetEvalState();
       $('mainForm').reset();
       $('selPondokSearch').value = '';
