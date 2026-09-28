@@ -1169,6 +1169,18 @@
       $('startBtn').disabled = false;
       $('historyCard').classList.remove('section-hidden');
       updateWorkflowSteps('history');
+      showBusy('กำลังโหลดประวัติ', 'กำลังตรวจสอบบันทึกการนิเทศของสถาบันนี้');
+      let historyLoadFailed = false;
+      try {
+        await loadHistory();
+      } catch (err) {
+        history = [];
+        renderHistory();
+        historyLoadFailed = true;
+      } finally {
+        closeBusy();
+      }
+      if (historyLoadFailed) Swal.fire({ icon: 'warning', title: 'โหลดประวัติไม่สำเร็จ', text: 'เลือกสถาบันแล้วลองใหม่อีกครั้ง' });
     }
 
     document.addEventListener('click', ev => {
