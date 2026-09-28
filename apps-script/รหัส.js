@@ -743,25 +743,12 @@ function savePondokEvaluation(payload) {
   return {success: true, message: 'อัปเดตข้อมูลปอเนาะ และบันทึกผลการนิเทศเรียบร้อยแล้ว!', lastEdit: formatDate(now), lastEditor: supervisor};
 }
 
-// --- ผู้ดูแลระบบ: ลบบันทึกผลนิเทศปอเนาะ (แถวใน DATA_PONDOK) ---
+// --- ผู้ใช้ที่เข้าสู่ระบบ: ลบบันทึกผลนิเทศปอเนาะ (แถวใน DATA_PONDOK) ---
 function deletePondokEvaluation(data) {
   const ss = SpreadsheetApp.openById(SHEET_ID);
   const requester = String(data && data.username ? data.username : '').trim();
   const row = Number(data && data.row ? data.row : 0);
-
-  // ตรวจสิทธิ์: เฉพาะผู้ดูแลระบบ (ชีต USERS)
-  let isAdmin = false;
-  const users = ss.getSheetByName(SHEET_USERS);
-  if(users) {
-    const lastRow = users.getLastRow();
-    if(lastRow >= 2) {
-      const rows = users.getRange(2, 1, lastRow - 1, 6).getValues();
-      for(let i = 0; i < rows.length; i++) {
-        if(String(rows[i][0]).trim() === requester && String(rows[i][5] || '').trim() === 'ผู้ดูแลระบบ') { isAdmin = true; break; }
-      }
-    }
-  }
-  if(!isAdmin) return {success: false, message: 'ลบบันทึกได้เฉพาะผู้ดูแลระบบ'};
+  if(!requester) return {success: false, message: 'กรุณาเข้าสู่ระบบก่อนลบบันทึก'};
 
   const target = ss.getSheetByName(SHEET_DATA_PONDOK);
   if(!target) return {success: false, message: 'ไม่พบชีต DATA_PONDOK'};

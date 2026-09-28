@@ -651,7 +651,7 @@
           <!-- ประวัติ -->
       <div class="card section-hidden" id="historyCard">
         <div class="card-title"><h4 id="historyTitle">ประวัติการนิเทศของสถาบันนี้</h4><span class="badge" id="histCount">0 รายการ</span></div>
-        <p class="small text-muted">ตรวจสอบผลการนิเทศเดิมได้ที่นี่ · แบบที่ 8 สามารถแก้ไขได้ และผู้ดูแลระบบสามารถลบรายการได้</p>
+        <p class="small text-muted">ตรวจสอบผลการนิเทศเดิมได้ที่นี่ · แบบที่ 8 สามารถแก้ไขได้ และผู้ที่เข้าสู่ระบบสามารถลบรายการได้</p>
             <div class="table-wrap">
               <table>
                 <thead>
@@ -1469,7 +1469,7 @@
         const editBtn = isForm8
           ? '<button type="button" class="btn btn-sm btn-outline history-action" title="แก้ไขบันทึกนี้" onclick="editRecord(' + i + ')">แก้ไข</button>'
           : '<span class="small text-muted">ข้อมูลเดิม</span>';
-        const delBtn = session.role === 'ผู้ดูแลระบบ'
+        const delBtn = session.username
           ? '<button type="button" class="btn btn-sm btn-danger history-action" title="ลบบันทึกนี้" onclick="deleteRecord(' + i + ')">ลบ</button>'
           : '';
         const actionHtml = '<div class="history-actions">' + editBtn + delBtn + '</div>';
