@@ -698,12 +698,17 @@
             </div>
 
             <label for="evalRound">📅 รอบการนิเทศ <span class="text-muted">(จำเป็นต้องเลือก)</span></label>
-            <select id="evalRound" class="form-select mb-3" onchange="markEvalDirty()">
+            <select id="evalRound" class="form-select mb-3" onchange="roundChange(this)">
               <option value="">— เลือกรอบการนิเทศ —</option>
               <option value="ครั้งที่ 1 (พฤษภาคม)">ครั้งที่ 1 การศึกษาสภาพและกําหนดประเด็นพัฒนา</option>
               <option value="ครั้งที่ 2 (กันยายน)">ครั้งที่ 2 การติดตามและสนับสนุนการพัฒนา</option>
               <option value="ครั้งที่ 3 (มกราคม)">ครั้งที่ 3 การประเมินผลและสรุปพัฒนาการ</option>
+              <option value="อื่นๆ">อื่นๆ ให้ระบุ</option>
             </select>
+            <div id="evalRoundOtherWrap" class="section-hidden mb-3">
+              <label for="evalRoundOther">ระบุรอบการนิเทศ</label>
+              <input type="text" id="evalRoundOther" class="form-control" placeholder="เช่น การนิเทศเพิ่มเติมเฉพาะกิจ" oninput="markEvalDirty()">
+            </div>
 
             <div id="formPanels"></div>
 
@@ -1454,6 +1459,59 @@
       updateReportOptions();
     }
 
+    const ROUND_LABELS = {
+      'ครั้งที่ 1 (พฤษภาคม)': 'ครั้งที่ 1 การศึกษาสภาพและกําหนดประเด็นพัฒนา',
+      'ครั้งที่ 2 (กันยายน)': 'ครั้งที่ 2 การติดตามและสนับสนุนการพัฒนา',
+      'ครั้งที่ 3 (มกราคม)': 'ครั้งที่ 3 การประเมินผลและสรุปพัฒนาการ',
+      'ครั้งที่ 1 การศึกษาสภาพและกําหนดประเด็นพัฒนา': 'ครั้งที่ 1 การศึกษาสภาพและกําหนดประเด็นพัฒนา',
+      'ครั้งที่ 2 การติดตามและสนับสนุนการพัฒนา': 'ครั้งที่ 2 การติดตามและสนับสนุนการพัฒนา',
+      'ครั้งที่ 3 การประเมินผลและสรุปพัฒนาการ': 'ครั้งที่ 3 การประเมินผลและสรุปพัฒนาการ'
+    };
+    const ROUND_VALUES = {
+      'ครั้งที่ 1 (พฤษภาคม)': 'ครั้งที่ 1 (พฤษภาคม)',
+      'ครั้งที่ 2 (กันยายน)': 'ครั้งที่ 2 (กันยายน)',
+      'ครั้งที่ 3 (มกราคม)': 'ครั้งที่ 3 (มกราคม)',
+      'ครั้งที่ 1 การศึกษาสภาพและกําหนดประเด็นพัฒนา': 'ครั้งที่ 1 (พฤษภาคม)',
+      'ครั้งที่ 2 การติดตามและสนับสนุนการพัฒนา': 'ครั้งที่ 2 (กันยายน)',
+      'ครั้งที่ 3 การประเมินผลและสรุปพัฒนาการ': 'ครั้งที่ 3 (มกราคม)'
+    };
+
+    function roundDisplay(value) {
+      const v = String(value || '').trim();
+      if (ROUND_LABELS[v]) return ROUND_LABELS[v];
+      return v ? 'อื่นๆ: ' + v : 'อื่นๆ: ไม่ได้ระบุ';
+    }
+
+    function roundChange(select) {
+      const other = $('evalRoundOtherWrap');
+      const isOther = select.value === 'อื่นๆ';
+      other.classList.toggle('section-hidden', !isOther);
+      if (isOther) $('evalRoundOther').focus();
+      markEvalDirty();
+    }
+
+    function getRoundValue() {
+      const value = $('evalRound').value;
+      return value === 'อื่นๆ' ? $('evalRoundOther').value.trim() : value;
+    }
+
+    function setRoundValue(value) {
+      const v = String(value || '').trim();
+      if (ROUND_VALUES[v]) {
+        $('evalRound').value = ROUND_VALUES[v];
+        $('evalRoundOther').value = '';
+        $('evalRoundOtherWrap').classList.add('section-hidden');
+      } else if (v) {
+        $('evalRound').value = 'อื่นๆ';
+        $('evalRoundOther').value = v;
+        $('evalRoundOtherWrap').classList.remove('section-hidden');
+      } else {
+        $('evalRound').value = '';
+        $('evalRoundOther').value = '';
+        $('evalRoundOtherWrap').classList.add('section-hidden');
+      }
+    }
+
     function renderHistory() {
       $('histCount').textContent = history.length + ' รายการ';
       const body = $('histBody');
@@ -1463,7 +1521,7 @@
       }
       body.innerHTML = history.map((h, i) => {
         const d = h.details || {};
-        const rnd = d.round || '-';
+        const rnd = roundDisplay(d.round);
         const pctCell = (h.pct !== '' && h.pct != null && !isNaN(Number(h.pct))) ? Number(h.pct) + '%' : '—';
         const isForm8 = Number(d.formNo) === 8 || String(h.formType || '').trim() === 'แบบที่ 8';
         const editBtn = isForm8
@@ -1550,7 +1608,7 @@
       f6 = { strengths: d.strengths || '', improve: d.improve || '', support: d.support || '', agreements: d.agreements || '', comment: d.comment || '' };
       apRows = (d.actionPlan || []).map(r => Object.assign({}, r));
       f7sum = Object.assign({ good: '', develop: '', support: [], supportOther: '', agreement: '', followStatus: '', followChange: '', followEvidence: '', followSummary: '', followNext: '', followOwner: '', followDate: '', exit1: '', exit2: '', exit3: '', exit4: '' }, d.summary || {});
-      $('evalRound').value = d.round || '';
+      setRoundValue(d.round);
       if (selectedPondok) {
         fillCenterInputs();
         $('dashCard').classList.remove('section-hidden');
@@ -1583,7 +1641,7 @@
       f6 = { strengths: '', improve: '', support: '', agreements: '', comment: '' };
       apRows = [];
       f7sum = { good: '', develop: '', support: [], supportOther: '', agreement: '', followStatus: '', followChange: '', followEvidence: '', followSummary: '', followNext: '', followOwner: '', followDate: '', exit1: '', exit2: '', exit3: '', exit4: '' };
-      $('evalRound').value = '';
+      setRoundValue('');
       clearEvalDirty();
     }
 
@@ -1911,7 +1969,7 @@
       ev.preventDefault();
       if (!session.username) { doLogout(); return; }
       if (!selectedPondok) { Swal.fire({ icon: 'warning', title: 'ยังไม่ได้เลือกสถาบัน' }); return; }
-      const round = $('evalRound').value;
+      const round = getRoundValue();
       if (!round) { Swal.fire({ icon: 'warning', title: 'กรุณาเลือกรอบการนิเทศ' }); $('evalRound').focus(); return; }
       const f = FORMS[curForm];
       if (f.scored) {
@@ -2003,7 +2061,7 @@
       });
       $('reportRecord').innerHTML = records.length ? records.map(x => {
         const d = x.h.details || {};
-        const round = d.round ? ' · ' + d.round : '';
+        const round = ' · ' + roundDisplay(d.round);
         const score = x.h.pct !== '' && x.h.pct != null ? ' · ' + x.h.pct + '%' : '';
         return '<option value="' + x.i + '">' + esc((x.h.timestamp || 'ไม่ระบุวันที่').replace('T',' ').slice(0,16)) + round + score + ' · ' + esc(x.h.supervisor || 'ไม่ระบุผู้นิเทศ') + '</option>';
       }).join('') : '<option value="">ยังไม่มีบันทึกแบบนี้</option>';
