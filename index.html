@@ -698,7 +698,7 @@
             </div>
 
             <label for="evalRound">📅 รอบการนิเทศ <span class="text-muted">(จำเป็นต้องเลือก)</span></label>
-            <select id="evalRound" class="form-select mb-3" onchange="">
+            <select id="evalRound" class="form-select mb-3" onchange="markEvalDirty()">
               <option value="">— เลือกรอบการนิเทศ —</option>
               <option value="ครั้งที่ 1 (พฤษภาคม)">ครั้งที่ 1 การศึกษาสภาพและกําหนดประเด็นพัฒนา</option>
               <option value="ครั้งที่ 2 (กันยายน)">ครั้งที่ 2 การติดตามและสนับสนุนการพัฒนา</option>
@@ -920,6 +920,7 @@
     let curForm = ACTIVE_FORM_INDEX;
     let editTarget = null;
     let answers = {}, notes = {}, multiVals = {};
+    let evalDirty = false;
     let f6 = { strengths: '', improve: '', support: '', agreements: '', comment: '' };
     let apRows = [];
     let f7sum = { good: '', develop: '', support: '', supportOther: '', agreement: '', followStatus: '', followChange: '', followEvidence: '', followSummary: '', followNext: '', followOwner: '', followDate: '', exit1: '', exit2: '', exit3: '', exit4: '' };
@@ -974,7 +975,8 @@
     function showLogin() { showOnly(['loginSection']); }
     function showRegister() { newCaptcha(); showOnly(['registerSection']); }
 
-    function doLogout() {
+    async function doLogout() {
+      if (!await confirmUnsavedChanges('ออกจากระบบ?')) return;
       clearPondokSelection();
       session = { username: '', fname: '', tel: '', role: '' };
       try { localStorage.removeItem('pondok_session'); } catch (e) {}
@@ -1183,6 +1185,28 @@
       if (historyLoadFailed) Swal.fire({ icon: 'warning', title: 'โหลดประวัติไม่สำเร็จ', text: 'เลือกสถาบันแล้วลองใหม่อีกครั้ง' });
     }
 
+    function markEvalDirty() {
+      evalDirty = true;
+    }
+
+    function clearEvalDirty() {
+      evalDirty = false;
+    }
+
+    async function confirmUnsavedChanges(title) {
+      if (!evalDirty) return true;
+      const result = await Swal.fire({
+        icon: 'warning',
+        title: title || 'มีข้อมูลที่ยังไม่ได้บันทึก',
+        text: 'ข้อมูลที่แก้ไขไว้จะหายไป หากยังไม่กดบันทึกผลการนิเทศ',
+        showCancelButton: true,
+        confirmButtonText: 'ออกโดยไม่บันทึก',
+        cancelButtonText: 'กลับไปบันทึก',
+        confirmButtonColor: '#ef4444'
+      });
+      return result.isConfirmed;
+    }
+
     document.addEventListener('click', ev => {
       ['selPondokSuggest'].forEach(id => {
         const b = $(id);
@@ -1295,13 +1319,8 @@
     }
 
     async function confirmPondokChange() {
-      if ($('evaluationSection').classList.contains('section-hidden')) return true;
-      const result = await Swal.fire({
-        icon: 'warning', title: 'เปลี่ยนสถานที่นิเทศ?',
-        text: 'ข้อมูลที่ยังไม่ได้บันทึกจะถูกล้าง ข้อมูลที่บันทึกแล้วจะยังคงอยู่',
-        showCancelButton: true, confirmButtonText: 'เปลี่ยนสถานที่', cancelButtonText: 'ยกเลิก'
-      });
-      return result.isConfirmed;
+      if ($('evaluationSection').classList.contains('section-hidden') || !evalDirty) return true;
+      return confirmUnsavedChanges('เปลี่ยนสถานที่นิเทศ?');
     }
 
     async function backToSelect() {
@@ -1486,7 +1505,7 @@
         closeBusy();
         Swal.fire({ icon: res.success ? 'success' : 'error', title: esc(res.message || ''), timer: res.success ? 2200 : undefined, showConfirmButton: !res.success });
         if (res.success) {
-          if (editTarget && editTarget.row === h.row) cancelEdit();
+          if (editTarget && editTarget.row === h.row) cancelEdit(true);
           await loadHistory();
         }
       } catch (e) {
@@ -1532,10 +1551,12 @@
       $('evalRound').value = d.round || '';
       $('evaluationSection').scrollIntoView({ behavior: 'smooth' });
       switchForm(fi);
+      clearEvalDirty();
       Swal.fire({ icon: 'success', title: 'เปิดข้อมูลเพื่อแก้ไขแล้ว', text: 'แก้ไขข้อมูลแล้วกดบันทึกผลการนิเทศด้านล่าง', timer: 1400, showConfirmButton: false });
     }
 
-    function cancelEdit() {
+    async function cancelEdit(force) {
+      if (!force && !await confirmUnsavedChanges('ยกเลิกการแก้ไข?')) return;
       editTarget = null;
       $('editRow').value = '';
       $('editType').value = '';
@@ -1554,6 +1575,7 @@
       apRows = [];
       f7sum = { good: '', develop: '', support: [], supportOther: '', agreement: '', followStatus: '', followChange: '', followEvidence: '', followSummary: '', followNext: '', followOwner: '', followDate: '', exit1: '', exit2: '', exit3: '', exit4: '' };
       $('evalRound').value = '';
+      clearEvalDirty();
     }
 
     // ---- Single active evaluation form ----
@@ -1704,12 +1726,14 @@
       const wasSel = btn.classList.contains('sel');
       btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('sel'));
       if (wasSel) { delete answers[code]; } else { btn.classList.add('sel'); answers[code] = val; }
+      markEvalDirty();
       recalc();
     }
 
     function selChange(sl) {
       const code = sl.dataset.sel;
       if (sl.value === '') delete answers[code]; else answers[code] = sl.value;
+      markEvalDirty();
     }
 
     function toggleMulti(input, code) {
@@ -1719,21 +1743,25 @@
       if (input.checked) arr.push(o);
       multiVals[code] = arr;
       cb.classList.toggle('on', input.checked);
+      markEvalDirty();
     }
 
     function noteInput(t) {
       const code = t.dataset.note;
       if (t.value.trim() === '') delete notes[code]; else notes[code] = t.value.trim();
+      markEvalDirty();
     }
 
     function f6Input(t) {
       const map = { f6_strengths: 'strengths', f6_improve: 'improve', f6_support: 'support', f6_agreements: 'agreements', f6_comment: 'comment' };
       f6[map[t.id]] = t.value;
+      markEvalDirty();
     }
 
     function f7Input(t) {
       const map = { f7_good: 'good', f7_develop: 'develop', f7_supportOther: 'supportOther', f7_agreement: 'agreement', f7_followStatus: 'followStatus', f7_followChange: 'followChange', f7_followEvidence: 'followEvidence', f7_followSummary: 'followSummary', f7_followNext: 'followNext', f7_followOwner: 'followOwner', f7_followDate: 'followDate', f7_exit1: 'exit1', f7_exit2: 'exit2', f7_exit3: 'exit3', f7_exit4: 'exit4' };
       if (map[t.id]) f7sum[map[t.id]] = t.value;
+      markEvalDirty();
     }
 
     function f7SupportChange(cb) {
@@ -1743,6 +1771,7 @@
       if (!cb.checked && ix >= 0) vals.splice(ix, 1);
       f7sum.support = vals;
       cb.parentElement.classList.toggle('on', cb.checked);
+      markEvalDirty();
     }
 
     // ---- กล่องหมายเหตุใช้ textarea ธรรมดา เพื่อให้โหลดเร็วและใช้งานบนมือถือได้ง่าย ----
@@ -1764,11 +1793,11 @@
         '</tr>').join('');
     }
 
-    function apInput(i, key, el) { if (apRows[i]) apRows[i][key] = el.value; }
+    function apInput(i, key, el) { if (apRows[i]) apRows[i][key] = el.value; markEvalDirty(); }
 
-    function addApRow() { apRows.push({ issue: '', activity: '', owner: '', due: '', evidence: '' }); renderApRows(); }
+    function addApRow() { apRows.push({ issue: '', activity: '', owner: '', due: '', evidence: '' }); renderApRows(); markEvalDirty(); }
 
-    function delApRow(i) { apRows.splice(i, 1); renderApRows(); }
+    function delApRow(i) { apRows.splice(i, 1); renderApRows(); markEvalDirty(); }
 
     async function aiDraftPlan() {
       const improve = fieldText('f6_improve');
@@ -1926,6 +1955,7 @@
         if (!res.success) { closeBusy(); Swal.fire({ icon: 'error', title: 'บันทึกไม่สำเร็จ', html: esc(res.message || '') }); return; }
         closeBusy();
         Swal.fire({ icon: 'success', title: editTarget ? 'แก้ไขเรียบร้อย!' : 'บันทึกเรียบร้อย!', html: esc(res.message || ''), timer: 2500, showConfirmButton: false });
+        clearEvalDirty();
         cancelEdit();
         await loadHistory();
       } catch (err) {
@@ -2145,6 +2175,13 @@
     // ===================== Boot =====================
     (async function boot() {
       $('selectionCard').after($('historyCard'));
+      $('mainForm').addEventListener('input', markEvalDirty);
+      $('mainForm').addEventListener('change', markEvalDirty);
+      window.addEventListener('beforeunload', ev => {
+        if (!evalDirty) return;
+        ev.preventDefault();
+        ev.returnValue = '';
+      });
       showLogin();
       restoreSavedLogin();
       newCaptcha();
