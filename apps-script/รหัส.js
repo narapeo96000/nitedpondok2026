@@ -8,6 +8,7 @@ const SHEET_ID = '1qk9eLhwKgPvh2fLwWNSthV4JKyDkJGqJojhLDus5460';
 //   G=จำนวนบุคลากร, H=จำนวนผู้เรียน, I=จำนวนผู้เรียนต่างชาติ, J=พิกัดแผนที่
 // ============================================================
 const SHEET_DATA_PONDOK = 'DATA_PONDOK';
+const SHEET_LOGFILE_PONDOK = 'logfile_pondok';
 const SHEET_ADDR_PONDOK = 'ADDR_PONDOK';
 const SHEET_USERS = 'USERS';
 const TYPE_PONDOK = 'ปอเนาะ';
@@ -225,6 +226,21 @@ function ensureDataSheet(type) {
   }
   sheet.getRange(1, 1, 1, DATA_HEADERS.length).setValues([DATA_HEADERS]);
   return sheet;
+}
+
+// --- เตรียมชีตสำรองก่อนแก้ไข/ลบข้อมูลนิเทศ ---
+const LOGFILE_HEADERS = ['Backup timestamp', 'Operation', 'Actor', 'Original row', 'Original data JSON'];
+function ensureLogFileSheet() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  let sheet = ss.getSheetByName(SHEET_LOGFILE_PONDOK);
+  if(!sheet) sheet = ss.insertSheet(SHEET_LOGFILE_PONDOK);
+  if(sheet.getLastRow() === 0) sheet.getRange(1, 1, 1, LOGFILE_HEADERS.length).setValues([LOGFILE_HEADERS]);
+  return sheet;
+}
+
+function backupPondokRow(dataSheet, row, operation, actor) {
+  const original = dataSheet.getRange(row, 1, 1, DATA_HEADERS.length).getValues()[0];
+  ensureLogFileSheet().appendRow([new Date(), operation, actor || '', row, JSON.stringify(original)]);
 }
 
 function formatDate(d) {
@@ -696,6 +712,8 @@ function savePondokEvaluation(payload) {
 
   if(payload.editRow && !isNaN(payload.editRow)) {
     const row = Number(payload.editRow);
+    if(row < 2 || row > dataSheet.getLastRow()) return {success: false, message: 'ไม่พบแถวข้อมูลที่ต้องการแก้ไข'};
+    backupPondokRow(dataSheet, row, 'แก้ไข', supervisor);
     dataSheet.getRange(row, 4).setValue(e.formType);
     dataSheet.getRange(row, 5).setValue(e.score1 !== undefined ? e.score1 : '');
     dataSheet.getRange(row, 6).setValue(e.score2 !== undefined ? e.score2 : '');
@@ -758,6 +776,7 @@ function deletePondokEvaluation(data) {
   }
   const nameVal = String(target.getRange(row, 3).getValue()).trim();
 
+  backupPondokRow(target, row, 'ลบ', requester);
   target.deleteRow(row);
   return {success: true, message: '🗑 ลบบันทึกนิเทศ "' + nameVal + '" (แถว ' + row + ') เรียบร้อย'};
 }
