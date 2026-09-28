@@ -14,7 +14,7 @@ const TYPE_PONDOK = 'ปอเนาะ';
 const PONDOK_ADDR_COLS = 10;
 
 // โครงสร้างชีต DATA (15 คอลัมน์ รองรับการประเมิน 4 ด้าน + สรุป)
-const DATA_HEADERS = ['Timestamp', 'ID ศูนย์', 'ชื่อศูนย์', 'ประเภทการประเมิน', 'คะแนนแบบ1', 'คะแนนแบบ2', 'คะแนนแบบ3', 'คะแนนแบบ4', 'รวม/150', 'ร้อยละ', 'ระดับ', 'รายละเอียด', 'ผู้นิเทศ', 'แก้ไขครั้งล่าสุด', 'ผู้แก้ไขล่าสุด'];
+const DATA_HEADERS = ['Timestamp', 'ID ศูนย์', 'ชื่อศูนย์', 'ประเภทการประเมิน', 'คะแนนแบบ1', 'คะแนนแบบ2', 'คะแนนแบบ3', 'คะแนนแบบ4', 'รวม/150', 'ร้อยละ', 'ระดับ', 'รายละเอียด', 'ผู้นิเทศ', 'ผู้แก้ไขล่าสุด', 'แก้ไขครั้งล่าสุด'];
 
 function doGet(e) {
   // GET สำหรับงานอ่านข้อมูลแบบปลอดภัย; หากไม่มี action ให้แสดงหน้า API แบบย่อ
@@ -250,6 +250,10 @@ function getEvaluations(pondokId) {
         if(String(rows[i][1]).trim() === pondokId) {
           let details = null;
           try { details = JSON.parse(rows[i][11] || 'null'); } catch(e) { details = null; }
+          // รองรับทั้งข้อมูลเดิม (N=วันเวลา, O=ผู้แก้ไข) และข้อมูลใหม่ (N=ผู้แก้ไข, O=วันเวลา)
+          const nValue = rows[i][13];
+          const oValue = rows[i][14];
+          const legacyLayout = nValue instanceof Date;
           list.push({
             row: i + 2,
             type: TYPE_PONDOK,
@@ -266,8 +270,8 @@ function getEvaluations(pondokId) {
             level: rows[i][10],
             details: details,
             supervisor: rows[i][12],
-            lastEdit: formatDate(rows[i][13]),
-            lastEditor: rows[i][14]
+            lastEdit: formatDate(legacyLayout ? nValue : oValue),
+            lastEditor: legacyLayout ? rows[i][14] : nValue
           });
         }
       }
@@ -701,8 +705,9 @@ function savePondokEvaluation(payload) {
     dataSheet.getRange(row, 10).setValue(e.pct !== undefined && e.pct !== null ? e.pct : '');
     dataSheet.getRange(row, 11).setValue(e.level);
     dataSheet.getRange(row, 12).setValue(detailsJSON);
-    dataSheet.getRange(row, 14).setValue(now);
-    dataSheet.getRange(row, 15).setValue(supervisor);
+    dataSheet.getRange(row, 13).setValue(supervisor);
+    dataSheet.getRange(row, 14).setValue(supervisor);
+    dataSheet.getRange(row, 15).setValue(now);
     return {
       success: true,
       message: 'แก้ไขผลการนิเทศเรียบร้อยแล้ว!<br>แก้ไขครั้งล่าสุด: ' + formatDate(now) + ' โดย ' + supervisor,
@@ -716,7 +721,7 @@ function savePondokEvaluation(payload) {
     e.score3 !== undefined ? e.score3 : '', e.score4 !== undefined ? e.score4 : '',
     e.totalScore !== undefined ? e.totalScore : '',
     e.pct !== undefined && e.pct !== null ? e.pct : '', e.level,
-    detailsJSON, supervisor, now, supervisor]);
+    detailsJSON, supervisor, supervisor, now]);
   return {success: true, message: 'อัปเดตข้อมูลปอเนาะ และบันทึกผลการนิเทศเรียบร้อยแล้ว!', lastEdit: formatDate(now), lastEditor: supervisor};
 }
 
