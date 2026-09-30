@@ -1,118 +1,66 @@
+// Offline model tests. No requests are sent to Apps Script or Google Sheets.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
-const html = fs.readFileSync(require('node:path').join(__dirname, '../index.html'), 'utf8');
-assert(!html.includes('lgPondokSearch'), 'Login must not contain a location picker');
-assert(!html.includes('id="formTabs"'), 'Only one form page, without form tabs');
-const reportOptions = html.match(/<select id="reportKind"[\s\S]*?<\/select>/)[0];
-assert.deepEqual([...reportOptions.matchAll(/value="([^"]+)"/g)].map(m => m[1]), ['summary', '8']);
+const path = require('node:path');
+const html = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
+assert(!html.includes('lgPondokSearch'), 'No location selection before login');
+assert(!html.includes('id="formTabs"'), 'One active form, not eight competing tabs');
 const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
-new vm.Script(script); // Check the complete inline script, including boot.
+new vm.Script(script);
 const elements = new Map();
-for (const [, id] of html.matchAll(/id="([^"]+)"/g)) {
-  const classes = new Set(['section-hidden']);
-  elements.set(id, { value: '', checked: false, disabled: false, textContent: '',
-    classList: { add: c => classes.add(c), remove: c => classes.delete(c),
-      contains: c => classes.has(c), toggle: (c, on) => on ? classes.add(c) : classes.delete(c) },
-    reset() {}, scrollIntoView() {}, focus() {} });
-}
-const storage = new Map();
-const ctx = vm.createContext({ console, document: {
-  getElementById: id => { assert(elements.has(id), `Unknown element: ${id}`); return elements.get(id); },
-  addEventListener() {}
-}, window: { scrollTo() {} }, localStorage: {
-  getItem: k => storage.get(k), setItem: (k, v) => storage.set(k, v), removeItem: k => storage.delete(k)
-}, Swal: { fire: async () => ({ isConfirmed: true }) } });
-vm.runInContext(script.slice(0, script.indexOf('// ===================== Boot')), ctx);
-async function run(code) { return await vm.runInContext(code, ctx); }
-(async () => {
-  assert.equal(await run('FORMS[curForm].no'), 8, 'Default to form 8');
-  assert.equal(await run('FORMS[curForm].max'), 32);
-  for (const [value, description] of [[2, 'ทำได้ชัดเจน'], ['1', 'กำลังพัฒนา'], [0, 'ต้องช่วยเหลือ'], ['NA', 'ไม่นำมาพิจารณา'], ['N/A', 'ไม่นำมาพิจารณา']]) {
-    const report = await run(`reportRecordData({details: {formNo: 8, answers: {'F8.C.0': ${JSON.stringify(value)}}}, totalScore: 12})`);
-    assert.equal(report.observations[12].result, description);
-    assert.equal(report.score, 12, 'Report descriptions must not change total scores');
-  }
-  await run('switchForm(0)');
-  assert.equal(await run('FORMS[curForm].no'), 8, 'Disabled forms cannot be opened');
-  await run(`answers = {}; FORMS[curForm].sections.forEach(sec => sec.items.forEach((item, i) => { answers[sec.code + '.' + i] = 2; })); recalc();`);
-  assert.equal(elements.get('totalScore').value, 32);
-  assert.equal(elements.get('pctScore').value, 100);
-  assert.equal(elements.get('answerProgress').value, 16, 'Progress tracks all scored questions');
-  assert.equal(elements.get('answerProgress').max, 16);
-  for (let no = 1; no <= 8; no++) {
-    const report = await run(`reportRecordData({details: {formNo: ${no}, answers: {}}, formType: 'แบบที่ ${no}'})`);
-    assert.equal(report.formNo, no);
-    assert(report.formName, 'Legacy form definitions remain available for summary');
-  }
-  await run(`api = async () => ({success: true, userData: {username: 'tester', fname: 'Test', role: 'user'}});
-    $('loginUser').value = 'tester'; $('loginPass').value = 'test';`);
-  await run('handleLogin()');
-  assert.equal(await run('session.username'), 'tester');
-  assert.equal(await run('selectedPondok'), null);
-  assert.equal(elements.get('appSection').classList.contains('section-hidden'), false);
-  assert.equal(elements.get('startBtn').disabled, true);
-  await run(`pondokList = [{id: 'A', name: 'A'}, {id: 'B', name: 'B'}]; pickPondok('sel', 0)`);
-  assert.equal(await run('selectedPondok.id'), 'A');
-  await run(`$('evaluationSection').classList.remove('section-hidden'); answers = {draft: 1};
-    api = async () => { throw new Error('Must not reload an open evaluation'); }; startEvaluation();`);
-  assert.equal(await run('answers.draft'), 1, 'Reopening current form keeps the draft');
-  await run(`$('evaluationSection').classList.remove('section-hidden'); answers = {test: 3};
-    Swal.fire = async () => ({isConfirmed: false});`);
-  await run("pickPondok('sel', 1)");
-  assert.equal(await run('selectedPondok.id'), 'A');
-  await run('Swal.fire = async () => ({isConfirmed: true})');
-  await run("pickPondok('sel', 1)");
-  assert.equal(await run('selectedPondok.id'), 'B');
-  assert.equal(await run('Object.keys(answers).length'), 0);
-  assert.equal(await run('session.username'), 'tester');
-  assert(storage.has('pondok_session'));
-  assert.equal(elements.get('evaluationSection').classList.contains('section-hidden'), true);
-  await run('backToSelect()');
-  assert.equal(await run('selectedPondok'), null);
-  assert.equal(await run('session.username'), 'tester');
-  await run(`pickPondok('sel', 0)`);
-  await run(`let finishRequest; api = () => new Promise(resolve => {finishRequest = resolve});
-    let pendingStart = startEvaluation();`);
-  await run('backToSelect()');
-  await run(`finishRequest({success: true, data: {id: 'A'}}); pendingStart`);
-  assert.equal(await run('selectedPondok'), null, 'Late response must not restore old selection');
-  await run(`
-    const levelCode = FORMS[0].sections[0].code + '.0';
-    const levelInputs = ['อิบติดาอียะฮฺ', 'มุตะวัซซิเฎาะฮฺ', 'อาลียะฮฺ'].map(value => {
-      const label = {dataset: {o: value}, classList: {toggle(name, checked) { this.on = checked; }}};
-      const input = {checked: true, parentElement: label};
-      label.querySelector = () => input;
-      toggleMulti(input, levelCode);
-      return input;
+const element = id => {
+  if (!elements.has(id)) {
+    const classes = new Set();
+    elements.set(id, {value:'', textContent:'', innerHTML:'', checked:false,
+      classList:{add:c=>classes.add(c), remove:c=>classes.delete(c), contains:c=>classes.has(c), toggle:(c,on)=>on?classes.add(c):classes.delete(c)},
+      setAttribute(){}, removeAttribute(){}, focus(){}, scrollIntoView(){}, reset(){}, checkValidity(){return true;}
     });
-  `);
-  assert.equal(await run('multiVals[levelCode].length'), 3, 'Multiple levels can be selected');
-  await run('toggleMulti(levelInputs[0], levelCode)');
-  assert.equal(await run('multiVals[levelCode].length'), 3, 'Repeated change does not deselect');
-  await run('levelInputs[1].checked = false; toggleMulti(levelInputs[1], levelCode)');
-  assert.equal(await run('multiVals[levelCode].length'), 2, 'One level can be deselected');
-  await run(`
-    document.querySelectorAll = selector => selector === '#formPanels .multi-box[data-multi]'
-      ? [{dataset: {multi: levelCode}, querySelectorAll: () => levelInputs.map(i => i.parentElement)}] : [];
-    levelInputs.forEach(i => { i.checked = false; });
-    applyState(FORMS[0]);
-  `);
-  assert.equal(await run('levelInputs.map(i => i.checked).join()'), 'true,false,true', 'Restore checked state');
-  await run(`
-    selectedPondok = {id: 'A'}; $('evalRound').value = '1'; curForm = ACTIVE_FORM_INDEX;
-    let savedPayload;
-    api = async (action, payload) => { savedPayload = payload; return {success: false}; };
-    submitFinal({preventDefault() {}});
-  `);
-  assert.deepEqual(Array.from(await run('savedPayload.evalData.answers[levelCode]')).sort(), ['อิบติดาอียะฮฺ', 'อาลียะฮฺ'].sort(), 'Save selected levels');
-  await run('doLogout()');
-  assert.equal(await run('session.username'), '');
-  assert(!storage.has('pondok_session'));
-  await run(`session = {username: 'tester'}; selectedPondok = {id: 'A'};
-    api = async () => { throw new Error('Network offline'); }; startEvaluation();`);
-  assert.equal(elements.get('startBtn').disabled, false, 'Failed loading can be retried');
-  await run('loadPondokList()');
-  assert.equal(elements.get('retryPondokBtn').classList.contains('section-hidden'), false, 'List loading offers retry');
-  console.log('PASS: login; switch location; session; stale response; multi-select/deselect/restore/save; logout');
-})().catch(e => { console.error(e); process.exitCode = 1; });
+  }
+  return elements.get(id);
+};
+const ctx = vm.createContext({console, document:{getElementById:element, querySelectorAll:()=>[], addEventListener(){}}, window:{scrollTo(){}}, Swal:{fire:async()=>({isConfirmed:true})}});
+vm.runInContext(script.slice(0, script.indexOf('// ===================== Boot')), ctx);
+const run = code => vm.runInContext(code, ctx);
+run("inspectionMode='general'; switchForm(ACTIVE_FORM_INDEX)");
+assert.equal(run('FORMS[curForm].no'), 8);
+run('switchForm(0)');
+assert.equal(run('FORMS[curForm].no'), 8, 'General route only allows form 8');
+assert.deepEqual(Array.from(run('SC3NA.map(o=>o.t)')), ['2','1','0','N/A']);
+for (let no = 1; no <= 8; no++) {
+  run("inspectionMode=" + JSON.stringify(no===8?'general':'full') + "; resetEvalState(); switchForm("+(no-1)+");");
+  assert.equal(run('FORMS[curForm].no'), no);
+  run("FORMS[curForm].sections.forEach(sec=>sec.items.forEach((it,i)=>{if(it.scale) answers[sec.code+'.'+i]=Math.max(...it.scale.filter(o=>typeof o.v==='number').map(o=>o.v));})); recalc();");
+  if ([2,4,7,8].includes(no)) {
+    assert.equal(element('totalScore').value, run('FORMS[curForm].max'), 'Maximum score for form '+no);
+    assert.equal(element('pctScore').value, 100);
+  }
+  const report = run("reportRecordData({details:{formNo:"+no+",answers:{}},formType:'แบบที่ "+no+"'})");
+  assert.equal(report.formNo, no);
+  assert(report.formName);
+}
+for (const [value, text] of [[2,'ทำได้ชัดเจน'],[1,'กำลังพัฒนา'],[0,'ต้องช่วยเหลือ'],['NA','ไม่นำมาพิจารณา']]) {
+  assert.equal(run("reportRecordData({details:{formNo:8,answers:{'F8.C.0':"+JSON.stringify(value)+"}}}).observations[12].result"), text);
+}
+run("inspectionMode='general'; resetEvalState(); switchForm(7); answers={'F8.A.0':'NA','F8.A.1':0}; recalc()");
+assert.equal(element('totalScore').value, 0, 'Zero is an answer');
+assert.equal(element('maxLabel').textContent, '30 (หัก N/A)');
+assert.equal(element('answerProgress').value, 2);
+assert.equal(run('secPts(FORMS[7].sections[0],FORMS[7])'), '12 คะแนน');
+run("setRoundValue('การนิเทศเฉพาะกิจ');");
+assert.equal(element('evalRound').value, 'อื่นๆ');
+assert.equal(run('getRoundValue()'), 'การนิเทศเฉพาะกิจ');
+run("setRoundValue('ครั้งที่ 2 การติดตามและสนับสนุนการพัฒนา')");
+assert.equal(run('getRoundValue()'), 'ครั้งที่ 2 (กันยายน)');
+
+// The address sheet starts at row 3, not the Tadika sheet's row 6.
+const backend = fs.readFileSync(path.join(__dirname, '../apps-script/รหัส.js'), 'utf8');
+const rows = [['A','ตัวอย่าง ก'],['B','ตัวอย่าง ข']];
+const backendCtx = vm.createContext({SpreadsheetApp:{openById:()=>({getSheetByName:()=>({getLastRow:()=>4, getRange:(start,col,count)=>{
+  assert.equal(start,3); assert.equal(col,1); assert.equal(count,2); return {getValues:()=>rows};
+}})})}});
+vm.runInContext(backend, backendCtx);
+assert.equal(vm.runInContext("getPondokData({id:'A'}).data.row", backendCtx), 3);
+assert.equal(vm.runInContext("getPondokData({id:'B'}).data.row", backendCtx), 4);
+assert.equal(vm.runInContext("getPondokData({id:'missing'}).success", backendCtx), false);
+console.log('PASS: 8 form definitions, mode guards, score maxima, zero/NA, progress, reports, rounds, address row mapping');

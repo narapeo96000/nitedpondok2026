@@ -638,7 +638,7 @@ function getPondokData(id) {
           return {
             success: true,
             data: {
-              row: i + 6,
+              row: i + 3,
               type: TYPE_PONDOK,
               id: rows[i][0], name: rows[i][1], address: rows[i][2],
               dist: rows[i][3], subdist: rows[i][4], phone: rows[i][5],

@@ -439,6 +439,19 @@
       .workflow-step .step-label { display:block; }
     }
     @media (prefers-reduced-motion: reduce) { * { scroll-behavior:auto !important; } }
+    .mode-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+    .mode-choice { padding:22px; text-align:left; white-space:normal; border:2px solid var(--border); border-radius:16px; background:var(--primary-light); color:var(--ink); cursor:pointer; font:inherit; }
+    .mode-choice:hover { border-color:var(--primary); }
+    .mode-choice strong { display:block; color:var(--primary-deep); font-size:1.15rem; margin-bottom:8px; }
+    .mode-choice span { display:block; line-height:1.7; }
+    .flow-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:16px; }
+    .flow-context { background:var(--primary-light); border-left:4px solid var(--primary); padding:14px; border-radius:12px; margin-bottom:16px; line-height:1.8; }
+    details > summary { cursor:pointer; font-weight:600; color:var(--primary-deep); padding:8px 0; }
+    details[open] > summary { margin-bottom:12px; }
+    .saved-mark { font-size:2.5rem; color:var(--green-dark); }
+    #savedCard { border-top:5px solid var(--primary); }
+    .workflow-step .step-label { white-space:normal; }
+    @media (max-width:640px) { .mode-grid { grid-template-columns:1fr; } .flow-actions .btn { flex:1 1 auto; } }
   </style>
 </head>
 <body>
@@ -450,6 +463,7 @@
     </div>
     <div class="header-user">
       <span id="headerUserText2" class="small"></span>
+      <button type="button" class="logout-btn" onclick="goHome()">หน้าแรก</button>
       <button class="logout-btn" onclick="doLogout()">ออกจากระบบ</button>
     </div>
   </div>
@@ -487,16 +501,18 @@
           ยังไม่มีบัญชี? <a href="javascript:void(0)" style="color:var(--primary); font-weight:600;" onclick="showRegister()">สมัครสมาชิก</a>
         </p>
       </div>
-      <div class="card download-card">
+      <details class="card download-card">
+        <summary>เอกสารและเครื่องมือนิเทศ (PDF)</summary>
         <div class="card-title"><h4>📚 ดาวน์โหลดแผนและเครื่องมือนิเทศ</h4><span class="badge">PDF</span></div>
         <div class="download-grid">
           <a class="download-link" href="https://drive.google.com/file/d/1gVkRj1wq8TjmxEZfq7cLJ035yUggpMaQ/view?usp=sharing" target="_blank" rel="noopener">🏫 โรงเรียนเอกชน</a>
           <a class="download-link" href="https://drive.google.com/file/d/1nuGVzZshKssSgGjSSEkkWkDU8FVSkwTP/view?usp=sharing" target="_blank" rel="noopener">🕌 ปอเนาะ</a>
           <a class="download-link" href="https://drive.google.com/file/d/1qm2s3AO5r7A2h7HKuUnB_QmI5tKuTJVC/view?usp=sharing" target="_blank" rel="noopener">📖 ตาดีกา</a>
         </div>
-      </div>
+      </details>
       <!-- ทำเนียบสถาบันปอเนาะ -->
-      <div class="card">
+      <details class="card">
+        <summary>ทำเนียบสถาบันศึกษาปอเนาะ</summary>
         <div class="card-title">
           <h4>🏫 ทำเนียบสถาบันศึกษาปอเนาะ</h4>
           <span class="badge" id="dirCount">0 รายการ</span>
@@ -511,7 +527,7 @@
             <tbody id="dirBody"><tr><td colspan="6" class="text-center text-muted">กำลังโหลด...</td></tr></tbody>
           </table>
         </div>
-      </div>
+      </details>
 
 
       <div class="app-footer">
@@ -548,19 +564,35 @@
     <!-- ===== หน้าหลัก (หลังล็อกอิน) ===== -->
     <div id="appSection" class="section-hidden">
       <div class="workflow-intro">
-        <h2>เริ่มนิเทศปอเนาะ</h2>
-        <p>1. เลือกสถานที่ → 2. กรอกแบบที่ 8 → 3. บันทึกและดูรายงาน</p>
+        <h2 id="workflowTitle" tabindex="-1">เลือกรูปแบบการนิเทศ</h2>
+        <p id="workflowHint">เลือกรูปแบบครั้งเดียว แล้วเลือกสถาบันที่จะนิเทศ</p>
         <div class="workflow-steps" aria-label="ขั้นตอนการนิเทศ">
-          <div class="workflow-step active" id="stepSelect"><span class="step-dot">1</span><span class="step-label">เลือกปอเนาะ</span></div>
+          <div class="workflow-step active" id="stepMode"><span class="step-dot">1</span><span class="step-label">รูปแบบ</span></div>
           <span class="workflow-line" id="stepLine1"></span>
-          <div class="workflow-step" id="stepHistory"><span class="step-dot">2</span><span class="step-label">ดูประวัติ</span></div>
+          <div class="workflow-step" id="stepSelect"><span class="step-dot">2</span><span class="step-label">สถานที่</span></div>
           <span class="workflow-line" id="stepLine2"></span>
-          <div class="workflow-step" id="stepForm"><span class="step-dot">3</span><span class="step-label">กรอกแบบที่ 8</span></div>
+          <div class="workflow-step" id="stepForm"><span class="step-dot">3</span><span class="step-label">บันทึกแบบนิเทศ</span></div>
+          <span class="workflow-line" id="stepLine3"></span>
+          <div class="workflow-step" id="stepSaved"><span class="step-dot">4</span><span class="step-label">เสร็จสิ้น</span></div>
+        </div>
+      </div>
+
+      <div class="card" id="modeCard">
+        <div class="mode-grid" id="modeChoices">
+          <button type="button" class="mode-choice" onclick="chooseMode('general')"><strong>นิเทศทั่วไป</strong><span>สำหรับผู้นิเทศทั่วไป</span><span>แบบที่ 8 · หน้าเดียว · 32 คะแนน</span></button>
+          <button type="button" class="mode-choice" onclick="chooseMode('full')"><strong>นิเทศเต็มรูปแบบ</strong><span>สำหรับศึกษานิเทศก์</span><span>เลือกเครื่องมือแบบที่ 1–7 ตามงานที่นิเทศ</span></button>
+        </div>
+        <div id="fullFormPicker" class="section-hidden mt-3">
+          <label for="fullFormChoice">เลือกเครื่องมือที่จะใช้ในครั้งนี้</label>
+          <select id="fullFormChoice" class="form-select"><option value="">— เลือกแบบนิเทศ —</option></select>
+          <p class="small text-muted" id="fullFormHint">บันทึกทีละแบบ และทำแบบถัดไปที่สถาบันเดิมได้โดยไม่ต้องเลือกสถานที่ซ้ำ</p>
+          <button type="button" class="btn btn-primary mt-2" onclick="continueFullMode()">ถัดไป</button>
         </div>
       </div>
 
       <!-- จัดการผู้ใช้ (ผู้ดูแลระบบ) -->
-      <div id="adminCard" class="card section-hidden">
+      <details id="adminCard" class="card section-hidden" ontoggle="if(this.open) loadUsers()">
+        <summary>จัดการผู้ใช้ (ผู้ดูแลระบบ)</summary>
         <div class="card-title">
           <h4>👥 จัดการผู้ใช้ (ผู้ดูแลระบบ)</h4>
           <button type="button" class="btn btn-outline2 btn-sm" onclick="loadUsers()">🔄 โหลดใหม่</button>
@@ -572,10 +604,12 @@
             <tbody id="adminUserBody"><tr><td colspan="6" class="text-center text-muted">กำลังโหลด...</td></tr></tbody>
           </table>
         </div>
-      </div>
+      </details>
 
       <!-- เลือกศูนย์ -->
-      <div class="card" id="selectionCard">
+      <div class="card section-hidden" id="selectionCard">
+        <p class="flow-context" id="selectionContext"></p>
+        <button type="button" class="btn btn-outline2 btn-sm mb-3" onclick="goHome()">← เปลี่ยนรูปแบบนิเทศ</button>
         <div class="card-title" id="pondokSelectTitle"><h4>เลือกสถาบันปอเนาะ</h4><span class="badge" id="selBadge">ยังไม่ได้เลือก</span></div>
         <p class="small text-muted">เลือกหรือเปลี่ยนสถานที่นิเทศได้ที่นี่ โดยไม่ต้องเข้าสู่ระบบใหม่</p>
         <div class="position-relative">
@@ -591,7 +625,19 @@
           <span id="selDetail" class="small text-muted"></span>
         </div>
         <div class="selection-tip"><span>💡</span><span>เลือกปอเนาะแล้วดูประวัติเดิมได้ทันที จากนั้นกดปุ่มด้านล่างเพื่อเริ่มกรอกแบบนิเทศ</span></div>
-        <button class="btn btn-success w-100 mt-3" id="startBtn" onclick="startEvaluation()" disabled>🚀 เริ่มการนิเทศ</button>
+        <button class="btn btn-success w-100 mt-3" id="startBtn" onclick="startEvaluation()" disabled>เริ่มการนิเทศใหม่</button>
+      </div>
+
+      <div id="savedCard" class="card section-hidden" role="status">
+        <div class="saved-mark" aria-hidden="true">✓</div>
+        <h3>บันทึกผลการนิเทศเรียบร้อยแล้ว</h3>
+        <p id="savedSummary" style="white-space:pre-line;line-height:1.8;"></p>
+        <p class="small text-muted">ข้อมูลถูกบันทึกแล้ว ไม่ต้องกดบันทึกซ้ำ</p>
+        <div class="flow-actions">
+          <button type="button" class="btn btn-primary" onclick="goHome()">กลับหน้าแรก</button>
+          <button type="button" class="btn btn-outline2" onclick="viewSavedHistory()">ดูประวัติ / รายงาน</button>
+          <button type="button" class="btn btn-outline2 section-hidden" id="nextFullBtn" onclick="nextFullForm()">ทำแบบอื่นที่สถาบันเดิม</button>
+        </div>
       </div>
 
       <!-- Dashboard สถิติ -->
@@ -607,19 +653,16 @@
 
       <!-- แบบประเมิน -->
       <div id="evaluationSection" class="section-hidden">
-        <nav class="work-nav" aria-label="เมนูการนิเทศ">
-          <a href="#evaluationCard">กรอกแบบนิเทศ</a>
-          <a href="#instituteCard">ข้อมูลสถาบัน</a>
-          <a href="#historyCard">ประวัติการนิเทศ</a>
-          <a href="#reportsCard">รายงาน / PDF</a>
-        </nav>
-        <form id="mainForm" onsubmit="submitFinal(event)">
+        <div class="flow-context"><b id="formContext"></b><br><span id="formModeContext"></span></div>
+        <button type="button" class="btn btn-outline2 mb-3" onclick="leaveForm()">← กลับไปประวัติ / เลือกสถานที่</button>
+        <form id="mainForm" onsubmit="submitFinal(event)" novalidate>
 
           <!-- ข้อมูลศูนย์ -->
-          <div class="card" id="instituteCard">
+          <details class="card" id="instituteCard">
+            <summary>ตรวจสอบ / แก้ไขข้อมูลสถาบัน (ถ้ามีการเปลี่ยนแปลง)</summary>
             <div class="card-title">
               <h4>ข้อมูลสถาบัน (แก้ไขได้)</h4>
-              <div style="display:flex; gap:8px; align-items:center;"><span class="badge lv lv-blue">ปอเนาะ</span><button type="button" class="btn btn-outline2 btn-sm" onclick="backToSelect()">เปลี่ยนสถานที่นิเทศ</button></div>
+              <span class="badge lv lv-blue">ปอเนาะ</span>
             </div>
             <input type="hidden" id="t_row">
             <input type="hidden" id="t_type">
@@ -634,10 +677,11 @@
               <div class="col-6"><label>ตำบล</label><input type="text" id="p_subdist" class="form-control"></div>
               <div class="col-12"><label>จำนวนผู้เรียน (คน)</label><input type="number" id="p_students" class="form-control" min="0"></div>
             </div>
-          </div>
+          </details>
 
           <!-- ปักหมุดพิกัดแผนที่ (ดาวเทียม) -->
-          <div class="card" id="pinCard" style="display:none;">
+          <details class="card" id="pinCard" ontoggle="if(this.open) initPinMap()">
+            <summary>ตำแหน่งบนแผนที่ (บันทึกพิกัดแยกจากแบบนิเทศ)</summary>
             <div class="card-title"><h4>ปักหมุดพิกัดแผนที่</h4><span class="badge lv lv-blue">ดาวเทียม</span></div>
             <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:8px;">
               <button type="button" class="btn btn-outline2 btn-sm" id="pinGpsBtn" onclick="pinLocation()">📍 ปักหมุดตำแหน่งปัจจุบัน (GPS)</button>
@@ -646,12 +690,14 @@
             </div>
             <div id="pinMapBox" style="height:260px; border-radius:10px; margin-bottom:8px;"></div>
             <div class="small text-muted" id="pinStatus"></div>
-          </div>
+          </details>
 
           <!-- ประวัติ -->
       <div class="card section-hidden" id="historyCard">
         <div class="card-title"><h4 id="historyTitle">ประวัติการนิเทศของสถาบันนี้</h4><span class="badge" id="histCount">0 รายการ</span></div>
-        <p class="small text-muted">ตรวจสอบผลการนิเทศเดิมได้ที่นี่ · แบบที่ 8 สามารถแก้ไขได้ และผู้ที่เข้าสู่ระบบสามารถลบรายการได้</p>
+        <p class="small text-muted">เลือกรายการเดิมเพื่อแก้ไขหรือลบ · หากเป็นการนิเทศครั้งใหม่ ให้กด “เริ่มการนิเทศใหม่” ด้านบน</p>
+        <p id="historyStatus" class="small" role="status"></p>
+        <button type="button" id="retryHistoryBtn" class="btn btn-outline2 btn-sm section-hidden" onclick="refreshHistory()">ลองโหลดประวัติอีกครั้ง</button>
             <div class="table-wrap">
               <table>
                 <thead>
@@ -664,13 +710,21 @@
             </div>
           </div>
 
-          <div class="card" id="reportsCard">
+          <details class="card section-hidden" id="reportsCard">
+            <summary>รายงานผลการนิเทศ / พิมพ์ PDF</summary>
             <div class="card-title"><h4>📊 รายงานผลการนิเทศ</h4><span class="badge">AI · Preview · PDF</span></div>
-            <p class="small text-muted">แสดงแบบรายงานที่ 8 จากคำตอบและคะแนนที่บันทึกไว้ พร้อมรายงานสรุปจากประวัติการนิเทศ รวมข้อมูลเดิม เพื่อ preview ก่อนพิมพ์หรือบันทึก PDF</p>
+            <p class="small text-muted">รายงานจากข้อมูลที่บันทึกแล้ว และรายงานสรุปทุกแบบจากประวัติการนิเทศ</p>
             <div class="report-toolbar">
               <div><label for="reportKind">รูปแบบรายงาน</label>
                 <select id="reportKind" class="form-select" onchange="updateReportOptions()">
                   <option value="summary">รายงานสรุปผลการนิเทศ (ทุกแบบ)</option>
+                  <option value="1">แบบที่ 1 · สำรวจข้อมูลพื้นฐานฯ</option>
+                  <option value="2">แบบที่ 2 · บริหารและใช้หลักสูตร</option>
+                  <option value="3">แบบที่ 3 · วิเคราะห์แผนการสอน</option>
+                  <option value="4">แบบที่ 4 · สังเกตชั้นเรียน</option>
+                  <option value="5">แบบที่ 5 · ติดตามวัดผลฯ</option>
+                  <option value="6">แบบที่ 6 · สะท้อนผล AAR</option>
+                  <option value="7">แบบที่ 7 · ฉบับไม่ใช่นิเทศก์</option>
                   <option value="8">แบบที่ 8 · บันทึกภาคสนามผู้ไม่ใช่ศึกษานิเทศก์ (32 คะแนน)</option>
                 </select>
               </div>
@@ -679,11 +733,11 @@
             <div class="alert alert-info mt-3 small" id="reportHelp">รายงานสรุปด้วย AI เป็นฉบับร่าง กรุณาตรวจสอบก่อนนำไปใช้</div>
             <div class="report-actions no-print"><button type="button" class="btn btn-primary" id="generateReportBtn" onclick="generateInspectionReport()">✨ สร้างรายงานสรุปด้วย AI</button><button type="button" class="btn btn-outline2" id="printReportBtn" onclick="printInspectionReport()" disabled>🖨️ Preview / ส่งออก PDF</button></div>
             <div id="reportPreview" class="report-preview mt-3 section-hidden" aria-live="polite"></div>
-          </div>
+          </details>
           <!-- บันทึกการนิเทศ -->
           <div class="card" id="evaluationCard">
             <div class="card-title">
-              <h4>แบบที่ 8 · บันทึกภาคสนามสำหรับผู้ไม่ใช่ศึกษานิเทศก์ (32 คะแนน)</h4>
+              <h4 id="evaluationTitle">แบบที่ 8 · บันทึกภาคสนามสำหรับผู้ไม่ใช่ศึกษานิเทศก์ (32 คะแนน)</h4>
             </div>
             <div id="editBanner" class="alert alert-warn d-none">
               <b>กำลังแก้ไขบันทึก</b> เมื่อ <span id="editInfo"></span>
@@ -691,10 +745,10 @@
             </div>
             <input type="hidden" id="editRow">
             <input type="hidden" id="editType">
-            <div class="progress-box">
+            <div class="progress-box" id="progressBox">
               <b id="answerProgressText" role="status">ตอบแล้ว 0 จาก 16 ข้อ</b>
               <progress id="answerProgress" value="0" max="16" aria-label="ความคืบหน้าการตอบแบบนิเทศ"></progress>
-              <p class="small mb-0">เลือกคะแนนแต่ละข้อ แล้วกดบันทึกท้ายแบบฟอร์ม ข้อมูลจะบันทึกเมื่อกดปุ่มบันทึกเท่านั้น</p>
+              <p class="small mb-0">กรอกข้อมูลแล้วกดตรวจสอบและบันทึกท้ายแบบฟอร์ม ข้อมูลยังไม่ถูกบันทึกจนกว่าจะยืนยัน</p>
             </div>
 
             <label for="evalRound">📅 รอบการนิเทศ <span class="text-muted">(จำเป็นต้องเลือก)</span></label>
@@ -712,7 +766,7 @@
 
             <div id="formPanels"></div>
 
-            <div class="total-box">
+            <div class="total-box" id="scoreBox">
               <div class="small" id="totalLabel">คะแนนรวมทั้งสิ้น</div>
               <div class="big"><span id="totalDisplay">0</span> / <span id="maxLabel">—</span></div>
               <div class="lvl" id="levelDisplay">ยังไม่กรอก</div>
@@ -723,13 +777,13 @@
             <input type="hidden" id="scoreA">
             <input type="hidden" id="scoreB">
 
-            <div class="alert alert-info mt-3">
+            <div class="alert alert-info mt-3" id="scoreLegend">
               <b>เกณฑ์การตัดระดับ (เฉพาะแบบที่ให้คะแนน)</b><br>
               80% ขึ้นไป = ดีมาก · 60–79% = ดี · 40–59% = พอใช้ · ต่ำกว่า 40% = ต้องปรับปรุง<br>
-              <span class="small">แบบที่ 8 คะแนนเต็ม 32 คะแนน หากเลือก N/A ระบบจะปรับคะแนนเต็มตามข้อที่ประเมินได้</span>
+              <span class="small">หากเลือก N/A ระบบจะปรับคะแนนเต็มตามข้อที่ประเมินได้</span>
             </div>
 
-            <button type="submit" class="btn btn-primary w-100 mt-3 py-3" id="finalSubmitBtn">💾 บันทึกผลการนิเทศ</button>
+            <button type="submit" class="btn btn-primary w-100 mt-3 py-3" id="finalSubmitBtn">ตรวจสอบและบันทึกผลการนิเทศ</button>
             <p class="small text-muted text-center">บันทึกคำตอบพร้อมข้อมูลสถาบันที่แก้ไข แล้วดูผลได้ในประวัติการนิเทศ</p>
           </div>
         </form>
@@ -757,6 +811,7 @@
       { v: 2, t: '2 ระหว่างพัฒนา' }, { v: 1, t: '1 ต้องสนับสนุน' }, { v: 'NA', t: 'N/A', na: true }
     ];
     const SC3 = [{ v: 2, t: '2' }, { v: 1, t: '1' }, { v: 0, t: '0' }];
+    const SC03 = [{ v: 3, t: '3' }, ...SC3];
     const SC3NA = [{ v: 2, t: '2' }, { v: 1, t: '1' }, { v: 0, t: '0' }, { v: 'NA', t: 'N/A', na: true }];
     const SEL_OK = ['สอดคล้อง/ชัดเจน', 'ต้องปรับปรุงบ้าง', 'ยังไม่มี/ไม่ชัด'];
     const SEL_EV = ['พบหลักฐานชัดเจน', 'พบบางส่วน', 'ไม่พบ'];
@@ -828,15 +883,15 @@
         max: 27,
         sections: [
           S('F4.A', 'การสังเกตการจัดการเรียนรู้ (9 ด้าน)', [
-            IT('1) เชื่อมโยงเป้าหมายของบทเรียน', { scale: SC3 }),
-            IT('2) สร้างความรู้ใหม่', { scale: SC3 }),
-            IT('3) ฝึกทักษะปฏิบัติ', { scale: SC3 }),
-            IT('4) ส่งเสริมการคิด', { scale: SC3 }),
-            IT('5) ประยุกต์ใช้ความรู้', { scale: SC3 }),
-            IT('6) เชื่อมโยงคุณธรรม/ชุมชน', { scale: SC3 }),
-            IT('7) การใช้สื่อ', { scale: SC3 }),
-            IT('8) การประเมินระหว่างเรียน', { scale: SC3 }),
-            IT('9) การสะท้อนผลบทเรียน', { scale: SC3 })
+            IT('1) เชื่อมโยงเป้าหมายของบทเรียน', { scale: SC03 }),
+            IT('2) สร้างความรู้ใหม่', { scale: SC03 }),
+            IT('3) ฝึกทักษะปฏิบัติ', { scale: SC03 }),
+            IT('4) ส่งเสริมการคิด', { scale: SC03 }),
+            IT('5) ประยุกต์ใช้ความรู้', { scale: SC03 }),
+            IT('6) เชื่อมโยงคุณธรรม/ชุมชน', { scale: SC03 }),
+            IT('7) การใช้สื่อ', { scale: SC03 }),
+            IT('8) การประเมินระหว่างเรียน', { scale: SC03 }),
+            IT('9) การสะท้อนผลบทเรียน', { scale: SC03 })
           ])
         ]
       },
@@ -923,6 +978,10 @@
     // Keep all definitions for historical records and summary reports.
     const ACTIVE_FORM_INDEX = FORMS.findIndex(f => f.no === 8);
     let curForm = ACTIVE_FORM_INDEX;
+    let inspectionMode = '', workflowStage = 'mode';
+    let continuingAtSamePondok = false, carriedRound = '';
+    let saving = false, openingForm = false, deleting = false;
+    let historyState = 'idle';
     let editTarget = null;
     let answers = {}, notes = {}, multiVals = {};
     let evalDirty = false;
@@ -1016,6 +1075,7 @@
 
     async function handleLogin(ev) {
       if (ev && ev.preventDefault) ev.preventDefault();
+      if ($('loginBtn').disabled) return;
       const u = $('loginUser').value.trim();
       const p = $('loginPass').value.trim();
       if (!u || !p) {
@@ -1070,12 +1130,14 @@
 
     function enterApp() {
       clearPondokSelection();
-      updateWorkflowSteps('select');
       showOnly(['appSection']);
       $('headerUserText').textContent = '👤 ' + session.fname;
       $('headerUserText2').textContent = '(' + session.username + ')';
-      $('adminCard').classList.toggle('section-hidden', session.role !== 'ผู้ดูแลระบบ');
-      if (session.role === 'ผู้ดูแลระบบ') loadUsers();
+      inspectionMode = '';
+      continuingAtSamePondok = false;
+      $('fullFormPicker').classList.add('section-hidden');
+      $('fullFormChoice').innerHTML = '<option value="">— เลือกแบบนิเทศ —</option>' + FORMS.filter(f => f.no <= 7).map(f => '<option value="' + (f.no - 1) + '">' + esc(formLabel(f)) + '</option>').join('');
+      showWorkflowStage('mode');
     }
 
     // ===================== Admin users =====================
@@ -1113,7 +1175,6 @@
     function norm(s) { return String(s == null ? '' : s).toLowerCase(); }
 
     async function loadPondokList() {
-      showBusy('กำลังโหลดข้อมูล', 'กำลังโหลดรายชื่อสถาบันปอเนาะ');
       $('pondokLoadStatus').textContent = 'กำลังโหลดรายชื่อปอเนาะ…';
       $('retryPondokBtn').classList.add('section-hidden');
       try {
@@ -1124,8 +1185,6 @@
       } catch (e) {
         $('pondokLoadStatus').textContent = 'โหลดรายชื่อไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง';
         $('retryPondokBtn').classList.remove('section-hidden');
-      } finally {
-        closeBusy();
       }
     }
 
@@ -1158,7 +1217,13 @@
 
     async function pickPondok(ctx, idx) {
       const c = pondokList[idx];
-      if (!c || !session.username) return;
+      if (!c || !session.username || workflowStage !== 'select' || openingForm || deleting || saving) return;
+      if (selectedPondok && String(selectedPondok.id) === String(c.id)) {
+        $('selPondokSearch').value = c.name;
+        $('selPondokSuggest').classList.add('d-none');
+        if (historyState === 'error') await refreshHistory();
+        return;
+      }
       if (selectedPondok && String(selectedPondok.id) !== String(c.id)) {
         if (!await confirmPondokChange()) return;
         clearPondokSelection();
@@ -1175,20 +1240,8 @@
       $('historyTitle').textContent = 'ประวัติการนิเทศสถาบันปอเนาะ ' + c.name;
       $('selBadge').textContent = 'เลือกแล้ว: ' + c.name;
       $('startBtn').disabled = false;
-      $('historyCard').classList.remove('section-hidden');
-      updateWorkflowSteps('history');
-      showBusy('กำลังโหลดประวัติ', 'กำลังตรวจสอบบันทึกการนิเทศของสถาบันนี้');
-      let historyLoadFailed = false;
-      try {
-        await loadHistory();
-      } catch (err) {
-        history = [];
-        renderHistory();
-        historyLoadFailed = true;
-      } finally {
-        closeBusy();
-      }
-      if (historyLoadFailed) Swal.fire({ icon: 'warning', title: 'โหลดประวัติไม่สำเร็จ', text: 'เลือกสถาบันแล้วลองใหม่อีกครั้ง' });
+      showWorkflowStage('select', false);
+      await refreshHistory();
     }
 
     function markEvalDirty() {
@@ -1200,6 +1253,7 @@
     }
 
     async function confirmUnsavedChanges(title) {
+      if (saving || openingForm || deleting) return false;
       if (!evalDirty) return true;
       const result = await Swal.fire({
         icon: 'warning',
@@ -1208,6 +1262,7 @@
         showCancelButton: true,
         confirmButtonText: 'ออกโดยไม่บันทึก',
         cancelButtonText: 'กลับไปบันทึก',
+        focusCancel: true,
         confirmButtonColor: '#ef4444'
       });
       return result.isConfirmed;
@@ -1243,40 +1298,131 @@
     }
 
     // ===================== Evaluation flow =====================
-    async function startEvaluation() {
-      if (!selectedPondok || !session.username) return;
-      if (!$('evaluationSection').classList.contains('section-hidden')) {
+    function formLabel(f = FORMS[curForm]) {
+      return f.short + ' · ' + f.name + (f.scored ? ' (' + f.max + ' คะแนน)' : ' (เชิงคุณภาพ)');
+    }
+
+    function modeLabel() { return inspectionMode === 'full' ? 'นิเทศเต็มรูปแบบ' : 'นิเทศทั่วไป'; }
+
+    function showWorkflowStage(stage, focus = true) {
+      workflowStage = stage;
+      const selecting = stage === 'select';
+      $('modeCard').classList.toggle('section-hidden', stage !== 'mode');
+      $('modeChoices').classList.toggle('section-hidden', continuingAtSamePondok);
+      $('selectionCard').classList.toggle('section-hidden', !selecting);
+      $('historyCard').classList.toggle('section-hidden', !selecting || !selectedPondok);
+      $('reportsCard').classList.toggle('section-hidden', !selecting || !selectedPondok || historyState !== 'ready' || !history.length);
+      $('dashCard').classList.toggle('section-hidden', historyState !== 'ready' || !history.length);
+      $('evaluationSection').classList.toggle('section-hidden', stage !== 'form');
+      $('savedCard').classList.toggle('section-hidden', stage !== 'saved');
+      $('adminCard').classList.toggle('section-hidden', stage !== 'mode' || session.role !== 'ผู้ดูแลระบบ');
+      const titles = {mode:'เลือกรูปแบบการนิเทศ', select:'เลือกสถานที่นิเทศ', form:editTarget ? 'แก้ไขบันทึกการนิเทศ' : 'บันทึกการนิเทศครั้งใหม่', saved:'บันทึกสำเร็จ'};
+      const hints = {mode:'เลือกรูปแบบครั้งเดียว แล้วเลือกสถาบันที่จะนิเทศ', select:'เลือกสถาบันเพื่อดูประวัติเดิม หรือเริ่มการนิเทศครั้งใหม่', form:'ระบุรอบการนิเทศ กรอกข้อมูล แล้วตรวจสอบก่อนยืนยันบันทึก', saved:'กลับหน้าแรกได้โดยไม่ต้องเข้าสู่ระบบใหม่'};
+      $('workflowTitle').textContent = titles[stage];
+      $('workflowHint').textContent = hints[stage];
+      if (stage === 'mode' && continuingAtSamePondok) {
+        $('workflowTitle').textContent = 'เลือกแบบนิเทศถัดไป';
+        $('workflowHint').textContent = 'นิเทศเต็มรูปแบบ · ใช้สถาบันและรอบเดิม ไม่ต้องเลือกซ้ำ';
+      }
+      $('selectionContext').textContent = modeLabel() + ' · ' + formLabel();
+      $('formContext').textContent = selectedPondok ? selectedPondok.id + ' · ' + selectedPondok.name : '';
+      $('formModeContext').textContent = modeLabel();
+      updateWorkflowSteps(stage);
+      if (focus) { window.scrollTo(0, 0); $('workflowTitle').focus({preventScroll:true}); }
+    }
+
+    async function chooseMode(mode) {
+      if (!['full', 'general'].includes(mode) || !session.username || workflowStage !== 'mode') return;
+      inspectionMode = mode;
+      continuingAtSamePondok = false;
+      $('fullFormPicker').classList.toggle('section-hidden', mode !== 'full');
+      if (mode === 'general') { curForm = ACTIVE_FORM_INDEX; showWorkflowStage('select'); $('selPondokSearch').focus(); }
+      else { $('fullFormHint').textContent = 'บันทึกทีละแบบ และทำแบบถัดไปที่สถาบันเดิมได้โดยไม่ต้องเลือกสถานที่ซ้ำ'; $('fullFormChoice').focus(); }
+    }
+
+    async function continueFullMode() {
+      if (workflowStage !== 'mode' || inspectionMode !== 'full') return;
+      const value = $('fullFormChoice').value;
+      const index = Number(value);
+      if (value === '' || !Number.isInteger(index) || index < 0 || index > 6) {
+        await Swal.fire({icon:'info', title:'เลือกเครื่องมือนิเทศก่อน', confirmButtonText:'ตกลง'});
+        $('fullFormChoice').focus(); return;
+      }
+      curForm = index;
+      if (continuingAtSamePondok && selectedPondok) await startEvaluation();
+      else { showWorkflowStage('select'); $('selPondokSearch').focus(); }
+    }
+
+    async function goHome() {
+      if (!session.username || !await confirmUnsavedChanges('กลับหน้าแรก?')) return;
+      enterApp();
+    }
+
+    function nextFullForm() {
+      if (workflowStage !== 'saved' || inspectionMode !== 'full') return;
+      carriedRound = getRoundValue();
+      continuingAtSamePondok = true;
+      $('fullFormPicker').classList.remove('section-hidden');
+      $('fullFormChoice').value = '';
+      $('fullFormHint').textContent = 'ใช้สถาบัน ' + selectedPondok.name + ' และรอบการนิเทศเดิมต่อได้';
+      showWorkflowStage('mode');
+      $('fullFormChoice').focus();
+    }
+
+    async function leaveForm() {
+      if (!await confirmUnsavedChanges('กลับไปเลือกสถานที่ / ประวัติ?')) return;
+      resetEvalState();
+      if (selectedPondok) fillCenterInputs();
+      showWorkflowStage('select');
+    }
+
+    async function viewSavedHistory() {
+      if (workflowStage !== 'saved') return;
+      resetEvalState();
+      showWorkflowStage('select');
+      await refreshHistory();
+    }
+
+    async function startEvaluation(record = null) {
+      if (!selectedPondok || !session.username || !inspectionMode || openingForm || saving) return;
+      if (!record && workflowStage === 'form') {
         $('evaluationCard').scrollIntoView({ behavior: 'smooth' });
         return;
       }
+      if (!await confirmUnsavedChanges('เปิดบันทึกอื่น?')) return;
+      if (openingForm || saving || deleting || !selectedPondok) return;
       const selection = selectedPondok;
+      const formIndex = record ? recordFormIndex(record) : curForm;
+      if (formIndex < 0) return;
+      openingForm = true;
       $('startBtn').disabled = true;
       $('startBtn').textContent = 'กำลังเปิดแบบนิเทศ…';
-      showBusy('กำลังโหลดข้อมูล', 'กำลังเตรียมข้อมูลสถาบันและประวัติการนิเทศ');
+      showBusy('กำลังเปิดแบบนิเทศ', 'กำลังเตรียมข้อมูลสถาบัน');
       try {
-      const res = await api('getPondokData', { id: selectedPondok.id });
+      const res = await api('getPondokData', { id: selection.id });
       if (selectedPondok !== selection || !session.username) return;
-      if (!res.success) { closeBusy(); Swal.fire({ icon: 'error', title: 'ไม่พบข้อมูลศูนย์' }); return; }
-      selectedPondok = Object.assign({}, res.data);
-      fillCenterInputs();
-      $('dashCard').classList.remove('section-hidden');
-      $('dashName').textContent = selectedPondok.name;
-      $('evaluationSection').classList.remove('section-hidden');
-      updateWorkflowSteps('form');
+      if (!res.success || !res.data) throw new Error('ไม่พบข้อมูลสถาบัน');
+      Object.assign(selectedPondok, res.data);
       resetEvalState();
-      switchForm(ACTIVE_FORM_INDEX);
-      $('pinCard').style.display = '';
-      initPinMap();
-      $('evaluationSection').scrollIntoView({ behavior: 'smooth' });
-      await loadHistory();
+      inspectionMode = formIndex === ACTIVE_FORM_INDEX ? 'general' : 'full';
+      fillCenterInputs();
+      if (record) restoreRecord(record);
+      else if (continuingAtSamePondok) setRoundValue(carriedRound);
+      continuingAtSamePondok = false;
+      switchForm(formIndex);
+      $('instituteCard').open = false;
+      $('pinCard').open = false;
+      pinDraft = null;
+      $('savePinBtn').disabled = true;
+      showWorkflowStage('form');
       closeBusy();
-      Swal.fire({ icon: 'success', title: 'พร้อมเริ่มนิเทศ', text: 'เตรียมข้อมูลเรียบร้อยแล้ว', timer: 1100, showConfirmButton: false });
       } catch (err) {
         closeBusy();
         Swal.fire({ icon: 'error', title: 'โหลดข้อมูลไม่สำเร็จ', text: 'กรุณาตรวจสอบอินเทอร์เน็ต แล้วลองเปิดสถานที่อีกครั้ง' });
       } finally {
+        openingForm = false;
         $('startBtn').disabled = !selectedPondok;
-        $('startBtn').textContent = $('evaluationSection').classList.contains('section-hidden') ? '🚀 เริ่มการนิเทศ' : 'กลับไปแบบนิเทศที่กำลังกรอก';
+        $('startBtn').textContent = 'เริ่มการนิเทศใหม่';
       }
     }
 
@@ -1307,22 +1453,30 @@
       $('selBadge').textContent = 'ยังไม่ได้เลือก';
       $('startBtn').disabled = true;
       $('dashCard').classList.add('section-hidden');
-      $('startBtn').textContent = '🚀 เริ่มการนิเทศ';
+      $('startBtn').textContent = 'เริ่มการนิเทศใหม่';
       $('historyCard').classList.add('section-hidden');
       $('evaluationSection').classList.add('section-hidden');
-      updateWorkflowSteps('select');
+      historyState = 'idle';
+      carriedRound = '';
+      $('reportsCard').open = false;
+      $('reportsCard').classList.add('section-hidden');
+      $('reportPreview').innerHTML = '';
+      $('reportPreview').classList.add('section-hidden');
+      $('printReportBtn').disabled = true;
     }
 
     function updateWorkflowSteps(stage) {
-      const order = { select: 0, history: 1, form: 2 };
-      ['select', 'history', 'form'].forEach((name, index) => {
+      const order = { mode: 0, select: 1, form: 2, saved: 3 };
+      ['mode', 'select', 'form', 'saved'].forEach((name, index) => {
         const el = $('step' + name.charAt(0).toUpperCase() + name.slice(1));
         if (!el) return;
         el.classList.toggle('active', order[stage] === index);
         el.classList.toggle('done', order[stage] > index);
+        if (name === stage) el.setAttribute('aria-current', 'step'); else el.removeAttribute('aria-current');
       });
       $('stepLine1').classList.toggle('done', order[stage] > 0);
       $('stepLine2').classList.toggle('done', order[stage] > 1);
+      $('stepLine3').classList.toggle('done', order[stage] > 2);
     }
 
     async function confirmPondokChange() {
@@ -1333,6 +1487,7 @@
     async function backToSelect() {
       if (!await confirmPondokChange()) return;
       clearPondokSelection();
+      showWorkflowStage('select');
       $('pondokSelectTitle').scrollIntoView({ behavior: 'smooth' });
       $('selPondokSearch').focus();
     }
@@ -1450,13 +1605,39 @@
     // ---- History ----
     async function loadHistory() {
       const selection = selectedPondok;
-      const res = await api('getEvaluations', String(selectedPondok.id));
+      if (!selection) return;
+      const res = await api('getEvaluations', String(selection.id));
       if (selectedPondok !== selection || !session.username) return;
-      history = [];
-      if (res.success) history = res.data.filter(h => h.type === 'ปอเนาะ');
+      if (!res.success || !Array.isArray(res.data)) throw new Error('โหลดประวัติไม่สำเร็จ');
+      history = res.data.filter(h => h.type === 'ปอเนาะ');
+      historyState = 'ready';
       renderHistory();
       updateDash();
       updateReportOptions();
+    }
+
+    async function refreshHistory() {
+      const selection = selectedPondok;
+      if (!selection) return;
+      historyState = 'loading';
+      $('historyStatus').textContent = 'กำลังโหลดประวัติการนิเทศ…';
+      $('histCount').textContent = 'กำลังโหลด';
+      $('histBody').innerHTML = '<tr><td colspan="9">กำลังโหลดประวัติ…</td></tr>';
+      $('retryHistoryBtn').classList.add('section-hidden');
+      $('reportsCard').classList.add('section-hidden');
+      try {
+        await loadHistory();
+        if (selectedPondok !== selection) return;
+        $('historyStatus').textContent = history.length ? 'เลือกแก้ไข / ลบรายการด้านล่าง หรือเปิดรายงานท้ายประวัติ' : 'ยังไม่มีประวัติ เริ่มการนิเทศครั้งใหม่ได้จากปุ่มด้านบน';
+      } catch (err) {
+        if (selectedPondok !== selection) return;
+        historyState = 'error';
+        $('histCount').textContent = 'โหลดไม่สำเร็จ';
+        $('historyStatus').textContent = 'โหลดประวัติไม่สำเร็จ ยังยืนยันไม่ได้ว่ามีรายการใดบ้าง กรุณาลองใหม่ก่อนสร้างบันทึกซ้ำ';
+        $('histBody').innerHTML = '<tr><td colspan="9">ไม่สามารถแสดงประวัติได้ในขณะนี้</td></tr>';
+        $('retryHistoryBtn').classList.remove('section-hidden');
+      }
+      if (selectedPondok === selection && workflowStage === 'select') showWorkflowStage('select', false);
     }
 
     const ROUND_LABELS = {
@@ -1523,8 +1704,7 @@
         const d = h.details || {};
         const rnd = roundDisplay(d.round);
         const pctCell = (h.pct !== '' && h.pct != null && !isNaN(Number(h.pct))) ? Number(h.pct) + '%' : '—';
-        const isForm8 = Number(d.formNo) === 8 || String(h.formType || '').trim() === 'แบบที่ 8';
-        const editBtn = isForm8
+        const editBtn = recordFormIndex(h) >= 0
           ? '<button type="button" class="btn btn-sm btn-outline history-action" title="แก้ไขบันทึกนี้" onclick="editRecord(' + i + ')">แก้ไข</button>'
           : '<span class="small text-muted">ข้อมูลเดิม</span>';
         const delBtn = session.username
@@ -1547,7 +1727,10 @@
 
     async function deleteRecord(i) {
       const h = history[i];
-      if (!h) return;
+      if (!h || deleting || saving || openingForm || workflowStage !== 'select' || historyState !== 'ready') return;
+      const selection = selectedPondok;
+      deleting = true;
+      try {
       const ask = await Swal.fire({
         icon: 'warning',
         title: 'ลบบันทึกการนิเทศ?',
@@ -1556,22 +1739,23 @@
         showCancelButton: true,
         confirmButtonText: '🗑 ลบเลย',
         cancelButtonText: 'ยกเลิก',
+        focusCancel: true,
         confirmButtonColor: '#ef4444'
       });
-      if (!ask.isConfirmed) return;
+      if (!ask.isConfirmed || selectedPondok !== selection) return;
       showBusy('กำลังลบบันทึก', 'กำลังลบประวัติการนิเทศที่เลือก');
       try {
         const res = await api('deletePondokEvaluation', { username: session.username, row: h.row });
         closeBusy();
         Swal.fire({ icon: res.success ? 'success' : 'error', title: esc(res.message || ''), timer: res.success ? 2200 : undefined, showConfirmButton: !res.success });
         if (res.success) {
-          if (editTarget && editTarget.row === h.row) cancelEdit(true);
-          await loadHistory();
+          await refreshHistory();
         }
       } catch (e) {
         closeBusy();
         Swal.fire({ icon: 'error', title: 'เชื่อมต่อไม่สำเร็จ', text: String(e) });
       }
+      } finally { deleting = false; }
     }
 
     function updateDash() {
@@ -1589,13 +1773,20 @@
     }
 
     // ---- Edit ----
-    function editRecord(i) {
-      const h = history[i];
-      if (!h) return;
+    function recordFormIndex(h) {
       const d = h.details || {};
-      const fi = FORMS.findIndex(f => f.no === Number(d.formNo) || ('แบบที่ ' + f.no) === String(h.formType || '').trim());
-      if (fi < 0) { Swal.fire({ icon: 'error', title: 'ไม่พบแบบฟอร์มของรายการนี้' }); return; }
-      if (fi !== ACTIVE_FORM_INDEX) { Swal.fire({ icon: 'info', title: 'เปิดใช้งานเฉพาะแบบที่ 8', text: 'ข้อมูลเดิมยังคงใช้ในรายงานสรุปได้' }); return; }
+      return FORMS.findIndex(f => f.no === Number(d.formNo) || ('แบบที่ ' + f.no) === String(h.formType || '').trim());
+    }
+
+    async function editRecord(i) {
+      const h = history[i];
+      if (!h || historyState !== 'ready' || deleting) return;
+      if (recordFormIndex(h) < 0) { Swal.fire({ icon: 'error', title: 'ไม่พบแบบฟอร์มของรายการนี้' }); return; }
+      await startEvaluation(h);
+    }
+
+    function restoreRecord(h) {
+      const d = h.details || {};
       editTarget = { row: h.row };
       $('editRow').value = h.row;
       $('editType').value = h.type;
@@ -1609,17 +1800,7 @@
       apRows = (d.actionPlan || []).map(r => Object.assign({}, r));
       f7sum = Object.assign({ good: '', develop: '', support: [], supportOther: '', agreement: '', followStatus: '', followChange: '', followEvidence: '', followSummary: '', followNext: '', followOwner: '', followDate: '', exit1: '', exit2: '', exit3: '', exit4: '' }, d.summary || {});
       setRoundValue(d.round);
-      if (selectedPondok) {
-        fillCenterInputs();
-        $('dashCard').classList.remove('section-hidden');
-        $('dashName').textContent = selectedPondok.name || '';
-      }
-      $('evaluationSection').classList.remove('section-hidden');
-      updateWorkflowSteps('form');
-      $('evaluationSection').scrollIntoView({ behavior: 'smooth' });
-      switchForm(fi);
       clearEvalDirty();
-      Swal.fire({ icon: 'success', title: 'เปิดข้อมูลเพื่อแก้ไขแล้ว', text: 'แก้ไขข้อมูลแล้วกดบันทึกผลการนิเทศด้านล่าง', timer: 1400, showConfirmButton: false });
     }
 
     async function cancelEdit(force) {
@@ -1629,7 +1810,8 @@
       $('editType').value = '';
       $('editBanner').classList.add('d-none');
       resetEvalState();
-      switchForm(ACTIVE_FORM_INDEX);
+      if (selectedPondok) fillCenterInputs();
+      showWorkflowStage('select');
     }
 
     function resetEvalState() {
@@ -1645,10 +1827,14 @@
       clearEvalDirty();
     }
 
-    // ---- Single active evaluation form ----
+    // ---- One active instrument at a time; mode limits the available forms. ----
     function switchForm(i) {
-      if (i !== ACTIVE_FORM_INDEX) return;
+      if (!FORMS[i] || (inspectionMode === 'general' ? i !== ACTIVE_FORM_INDEX : inspectionMode !== 'full' || i === ACTIVE_FORM_INDEX)) return;
       curForm = i;
+      $('evaluationTitle').textContent = formLabel();
+      $('scoreBox').classList.toggle('section-hidden', !FORMS[i].scored);
+      $('scoreLegend').classList.toggle('section-hidden', !FORMS[i].scored);
+      $('finalSubmitBtn').textContent = editTarget ? 'ตรวจสอบและบันทึกการแก้ไข' : 'ตรวจสอบและบันทึกผลการนิเทศ';
       renderPanel(i);
       recalc();
     }
@@ -1712,7 +1898,7 @@
 
       if (f.no === 8) {
         html +=
-          '<div class="form-section"><div class="section-head"><span class="title">ส่วนที่ 3 · สรุปผลการนิเทศ</span></div><div class="section-body">' +
+          '<div class="form-section"><div class="section-head"><span class="title">สรุปผลการนิเทศ</span></div><div class="section-body">' +
           '<label>✅ สิ่งที่สถาบันทำได้ดี (เลือกไม่เกิน 3 เรื่อง)</label><textarea id="f7_good" oninput="f7Input(this)" placeholder="เช่น มีตารางเรียนชัดเจน, ผู้เรียนได้ฝึกปฏิบัติจริง"></textarea>' +
           '<label class="mt-2">🔧 เรื่องสำคัญที่ควรพัฒนา (เลือก 1–2 เรื่อง)</label><textarea id="f7_develop" oninput="f7Input(this)"></textarea>' +
           '<label class="mt-2">🤝 ความต้องการการสนับสนุน</label>' +
@@ -1721,7 +1907,7 @@
           '</div><input id="f7_supportOther" class="form-control mt-2" placeholder="อื่น ๆ (ถ้ามี)" oninput="f7Input(this)">' +
           '<label class="mt-2">📜 ข้อตกลงเพื่อการพัฒนา</label><textarea id="f7_agreement" oninput="f7Input(this)" placeholder="เรื่องที่ตกลง / สิ่งที่สถาบันหรือครูจะดำเนินการ / ผู้สนับสนุน / หลักฐาน / กำหนดติดตาม"></textarea>' +
           '</div></div>' +
-          '<div class="form-section"><div class="section-head"><span class="title">ส่วนที่ 4 · แบบติดตามครั้งต่อไป</span></div><div class="section-body">' +
+          '<div class="form-section"><div class="section-head"><span class="title">แบบติดตามครั้งต่อไป (ถ้ามี)</span></div><div class="section-body">' +
           '<label>สถานะเรื่องที่ตกลงว่าจะพัฒนา</label><select id="f7_followStatus" class="form-select" onchange="f7Input(this)"><option value="">— เลือก —</option><option>ทำแล้ว</option><option>กำลังทำ</option><option>ยังไม่ได้ทำ</option></select>' +
           '<label class="mt-2">มีอะไรเปลี่ยนแปลง</label><textarea id="f7_followChange" oninput="f7Input(this)"></textarea>' +
           '<label class="mt-2">หลักฐานแสดงการเปลี่ยนแปลง</label><textarea id="f7_followEvidence" oninput="f7Input(this)"></textarea>' +
@@ -1745,7 +1931,7 @@
 
     function secPts(sec, f) {
       let n = 0;
-      sec.items.forEach(it => { if (it.scale) n += it.scale.filter(o => typeof o.v === 'number').length * Math.max(...it.scale.filter(o => typeof o.v === 'number').map(o => o.v)); });
+      sec.items.forEach(it => { if (it.scale) n += Math.max(...it.scale.filter(o => typeof o.v === 'number').map(o => o.v)); });
       return n ? (n + ' คะแนน') : '';
     }
 
@@ -1781,7 +1967,10 @@
         $('f7_supportOther').value = f7sum.supportOther || '';
         $('f7_agreement').value = f7sum.agreement;
         ['f7_followStatus','f7_followChange','f7_followEvidence','f7_followSummary','f7_followNext','f7_followOwner','f7_followDate','f7_exit1','f7_exit2','f7_exit3','f7_exit4'].forEach(id => { if ($(id)) $(id).value = f7sum[id.replace('f7_', '')] || ''; });
-        document.querySelectorAll('[data-f7-support]').forEach(cb => cb.parentElement.classList.toggle('on', (f7sum.support || []).includes(cb.dataset.f7Support)));
+        document.querySelectorAll('[data-f7-support]').forEach(cb => {
+          cb.checked = (f7sum.support || []).includes(cb.dataset.f7Support);
+          cb.parentElement.classList.toggle('on', cb.checked);
+        });
       }
     }
 
@@ -1801,6 +1990,7 @@
       const code = sl.dataset.sel;
       if (sl.value === '') delete answers[code]; else answers[code] = sl.value;
       markEvalDirty();
+      recalc();
     }
 
     function toggleMulti(input, code) {
@@ -1811,6 +2001,7 @@
       multiVals[code] = arr;
       cb.classList.toggle('on', input.checked);
       markEvalDirty();
+      recalc();
     }
 
     function noteInput(t) {
@@ -1881,6 +2072,7 @@
         const txt = (res.reply || '').replace(/\*\*/g, '');
         $('f6_comment').value = txt;
         f6.comment = txt;
+        markEvalDirty();
         Swal.close();
         Swal.fire({ icon: 'success', title: 'AI ร่างแผนแล้ว', text: 'ดูข้อเสนอในช่อง "หมายเหตุ/ข้อเสนอแนะ" ด้านล่าง', timer: 2200, showConfirmButton: false });
       } catch (e) {
@@ -1891,8 +2083,9 @@
     // ---- Scoring ----
     function recalc() {
       const f = FORMS[curForm];
-      const questions = f.sections.flatMap(sec => sec.items.map((it, i) => ({ it, code: sec.code + '.' + i }))).filter(q => q.it.scale);
-      const completed = questions.filter(q => answers[q.code] !== undefined).length;
+      const questions = f.sections.flatMap(sec => sec.items.map((it, i) => ({ it, code: sec.code + '.' + i })));
+      const completed = questions.filter(q => q.it.type === 'multi' ? (multiVals[q.code] || []).length : answers[q.code] !== undefined).length;
+      $('progressBox').classList.toggle('section-hidden', f.qualitative === true);
       $('answerProgressText').textContent = 'ตอบแล้ว ' + completed + ' จาก ' + questions.length + ' ข้อ';
       $('answerProgress').max = questions.length || 1;
       $('answerProgress').value = completed;
@@ -1935,9 +2128,9 @@
         effMax = f.max - m;
       }
       const pct = effMax > 0 ? Math.round(total / effMax * 100) : 0;
-      const lvl = answeredVals.length ? levelOf(pct) : 'ยังไม่กรอก';
+      const lvl = answeredVals.length ? levelOf(pct) : (na === questions.length ? 'ไม่นำมาพิจารณา' : 'ยังไม่กรอก');
       let s1 = '', s2 = '';
-      if (curForm === 6) {
+      if (f.no === 7 || f.no === 8) {
         s1 = partSum(0); s2 = partSum(1);
       }
       $('maxLabel').textContent = effMax + (na ? ' (หัก N/A)' : '');
@@ -1967,33 +2160,48 @@
     // ---- Submit ----
     async function submitFinal(ev) {
       ev.preventDefault();
+      if (saving || openingForm || workflowStage !== 'form') return;
       if (!session.username) { doLogout(); return; }
       if (!selectedPondok) { Swal.fire({ icon: 'warning', title: 'ยังไม่ได้เลือกสถาบัน' }); return; }
-      const round = getRoundValue();
-      if (!round) { Swal.fire({ icon: 'warning', title: 'กรุณาเลือกรอบการนิเทศ' }); $('evalRound').focus(); return; }
-      const f = FORMS[curForm];
-      if (f.scored) {
-        const answeredN = f.sections.reduce((a, sec) => a + sec.items.filter(it => {
-          if (!it.scale) return false;
-          const code = sec.code + '.' + sec.items.indexOf(it);
-          return answers[code] !== undefined;
-        }).length, 0);
-        const totalItems = f.sections.reduce((a, sec) => a + sec.items.filter(it => it.scale).length, 0);
-        if (answeredN === 0) {
-          const go = await Swal.fire({ icon: 'question', title: 'ยังไม่ได้ให้คะแนนเลย', text: 'ต้องการบันทึกแบบว่างหรือไม่?', showCancelButton: true, confirmButtonText: 'บันทึก', cancelButtonText: 'ยกเลิก' });
-          if (!go.isConfirmed) return;
-        } else if (answeredN < totalItems) {
-          const go = await Swal.fire({ icon: 'question', title: 'ตอบ ' + answeredN + '/' + totalItems + ' ข้อ', text: 'ต้องการบันทึกตามนี้หรือไม่?', showCancelButton: true, confirmButtonText: 'บันทึก', cancelButtonText: 'ยกเลิก' });
-          if (!go.isConfirmed) return;
-        }
+      if (!$('mainForm').checkValidity()) {
+        $('instituteCard').open = true;
+        $('mainForm').reportValidity();
+        return;
       }
+      const round = getRoundValue();
+      if (!round) {
+        await Swal.fire({ icon: 'warning', title: 'กรุณาระบุรอบการนิเทศ', confirmButtonText:'ตกลง' });
+        ($('evalRound').value === 'อื่นๆ' ? $('evalRoundOther') : $('evalRound')).focus(); return;
+      }
+      const f = FORMS[curForm];
+      recalc();
+      // Hold the operation lock during confirmation as well as the request.
+      saving = true;
+      $('finalSubmitBtn').disabled = true;
+      try {
+      const questions = f.sections.flatMap(sec => sec.items.map((it, i) => ({it, code:sec.code + '.' + i})));
+      const completed = questions.filter(q => q.it.type === 'multi' ? (multiVals[q.code] || []).length : answers[q.code] !== undefined).length;
+      const incomplete = completed < questions.length;
+      const qualitativeEmpty = f.qualitative && !Object.values(f6).some(v => String(v).trim()) && !apRows.some(r => r.issue || r.activity);
+      const go = await Swal.fire({
+        icon: incomplete || qualitativeEmpty ? 'warning' : 'question',
+        title: editTarget ? 'ยืนยันบันทึกการแก้ไข?' : 'ยืนยันบันทึกการนิเทศ?',
+        html: '<b>' + esc($('p_name').value) + '</b><br>' + esc(formLabel(f)) + '<br>' + esc(roundDisplay(round)) +
+          (questions.length ? '<br>ตอบแล้ว ' + completed + ' / ' + questions.length + ' ข้อ' : '') +
+          (f.scored ? '<br>คะแนน ' + esc($('totalScore').value) + ' / ' + esc($('maxLabel').textContent) : '') +
+          (incomplete ? '<p>ยังตอบไม่ครบ ระบบจะบันทึกเฉพาะข้อมูลที่กรอกไว้</p>' : '') +
+          (qualitativeEmpty ? '<p>ยังไม่มีผลสะท้อนหรือแผนพัฒนา ต้องการบันทึกแบบว่างหรือไม่?</p>' : '') +
+          (editTarget ? '<p>ระบบจะสำรองข้อมูลเดิมก่อนแก้ไข</p>' : ''),
+        showCancelButton:true, confirmButtonText:'ยืนยันบันทึก', cancelButtonText:'กลับไปตรวจสอบ', focusCancel:incomplete || qualitativeEmpty
+      });
+      if (!go.isConfirmed) return;
       const evalData = {
         formNo: f.no,
         formType: f.short,
         round: round,
         score1: $('scoreA').value,
         score2: $('scoreB').value,
-        score3: '',
+        score3: f.no === 8 ? partSum(2) : '',
         score4: '',
         totalScore: $('totalScore').value,
         pct: $('pctScore').value,
@@ -2014,23 +2222,25 @@
         evalData: evalData
       };
       if (editTarget) { payloadData.editRow = editTarget.row; }
-      $('finalSubmitBtn').disabled = true;
       $('finalSubmitBtn').textContent = 'กำลังบันทึก…';
       showBusy(editTarget ? 'กำลังบันทึกการแก้ไข' : 'กำลังบันทึกข้อมูล', 'กำลังบันทึกผลการนิเทศและข้อมูลสถาบัน');
-      try {
         const res = await api('savePondokEvaluation', payloadData);
         if (!res.success) { closeBusy(); Swal.fire({ icon: 'error', title: 'บันทึกไม่สำเร็จ', html: esc(res.message || '') }); return; }
         closeBusy();
-        Swal.fire({ icon: 'success', title: editTarget ? 'แก้ไขเรียบร้อย!' : 'บันทึกเรียบร้อย!', html: esc(res.message || ''), timer: 2500, showConfirmButton: false });
+        Object.assign(selectedPondok, payloadData.pondokData);
         clearEvalDirty();
-        cancelEdit();
-        await loadHistory();
+        $('savedSummary').textContent = selectedPondok.name + '\n' + formLabel(f) + '\n' + roundDisplay(round) + '\n' +
+          (editTarget ? 'แก้ไขบันทึกเดิมแล้ว' : 'เพิ่มบันทึกใหม่แล้ว') + (f.scored ? ' · คะแนน ' + evalData.totalScore + ' / ' + $('maxLabel').textContent : ' · ข้อมูลเชิงคุณภาพ');
+        $('nextFullBtn').classList.toggle('section-hidden', inspectionMode !== 'full');
+        historyState = 'idle';
+        showWorkflowStage('saved');
       } catch (err) {
         closeBusy();
-        Swal.fire({ icon: 'error', title: 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', text: String(err) });
+        Swal.fire({ icon: 'error', title: 'ยังยืนยันผลการบันทึกไม่ได้', text: 'ข้อมูลที่กรอกยังอยู่ หากการเชื่อมต่อขาดระหว่างส่ง ระบบอาจบันทึกแล้ว กรุณาตรวจประวัติก่อนส่งซ้ำ' });
       } finally {
+        saving = false;
         $('finalSubmitBtn').disabled = false;
-        $('finalSubmitBtn').textContent = '💾 บันทึกผลการนิเทศ';
+        $('finalSubmitBtn').textContent = editTarget ? 'ตรวจสอบและบันทึกการแก้ไข' : 'ตรวจสอบและบันทึกผลการนิเทศ';
       }
     }
 
@@ -2045,6 +2255,13 @@
     }
 
     function updateReportOptions() {
+      const available = new Set(history.map(h => String(FORMS[recordFormIndex(h)]?.no)));
+      Array.from($('reportKind').options).forEach(option => {
+        const enabled = option.value === 'summary' || available.has(option.value);
+        option.hidden = !enabled;
+        option.disabled = !enabled;
+      });
+      if ($('reportKind').value !== 'summary' && !available.has($('reportKind').value)) $('reportKind').value = 'summary';
       const kind = $('reportKind').value;
       $('reportPreview').classList.add('section-hidden');
       $('printReportBtn').disabled = true;
@@ -2063,7 +2280,7 @@
         const d = x.h.details || {};
         const round = ' · ' + roundDisplay(d.round);
         const score = x.h.pct !== '' && x.h.pct != null ? ' · ' + x.h.pct + '%' : '';
-        return '<option value="' + x.i + '">' + esc((x.h.timestamp || 'ไม่ระบุวันที่').replace('T',' ').slice(0,16)) + round + score + ' · ' + esc(x.h.supervisor || 'ไม่ระบุผู้นิเทศ') + '</option>';
+        return '<option value="' + x.i + '">' + esc((x.h.timestamp || 'ไม่ระบุวันที่').replace('T',' ').slice(0,16)) + esc(round + score) + ' · ' + esc(x.h.supervisor || 'ไม่ระบุผู้นิเทศ') + '</option>';
       }).join('') : '<option value="">ยังไม่มีบันทึกแบบนี้</option>';
     }
 
@@ -2089,7 +2306,7 @@
       }));
       return {
         formNo: no, formName: form ? form.name : h.formType || 'แบบนิเทศ',
-        date: h.timestamp || '', round: d.round || '', supervisor: h.supervisor || '',
+        date: h.timestamp || '', round: roundDisplay(d.round), supervisor: h.supervisor || '',
         score: h.totalScore === '' || h.totalScore == null ? null : h.totalScore,
         percentage: h.pct === '' || h.pct == null ? null : h.pct,
         level: h.level || '', observations,
@@ -2242,10 +2459,13 @@
     // ===================== Boot =====================
     (async function boot() {
       $('selectionCard').after($('historyCard'));
-      $('mainForm').addEventListener('input', markEvalDirty);
-      $('mainForm').addEventListener('change', markEvalDirty);
+      $('historyCard').after($('reportsCard'));
+      $('reportsCard').append($('dashCard'));
+      const formChanged = () => { if (workflowStage === 'form') markEvalDirty(); };
+      $('mainForm').addEventListener('input', formChanged);
+      $('mainForm').addEventListener('change', formChanged);
       window.addEventListener('beforeunload', ev => {
-        if (!evalDirty) return;
+        if (!evalDirty && !saving) return;
         ev.preventDefault();
         ev.returnValue = '';
       });
