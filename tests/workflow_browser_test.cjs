@@ -11,6 +11,33 @@ const institutions = [
   {id:'TEST-B',name:'ปอเนาะทดสอบ ข',address:'ที่อยู่จำลอง',row:4}
 ];
 
+// Check text against its actual solid/gradient background, including inherited
+// backgrounds. Selected, unselected, disabled and helper text use the same floor.
+async function checkContrast(locator, label) {
+  const pairs = await locator.evaluateAll(nodes => {
+    const rgba = css => {const v=css.match(/[\d.]+/g).map(Number); return [v[0],v[1],v[2],v[3]??1];};
+    const over = (foreground,background) => foreground.slice(0,3).map((v,i)=>v*foreground[3]+background[i]*(1-foreground[3]));
+    const backgrounds = el => {
+      if (!el) return [[255,255,255]];
+      const style=getComputedStyle(el);
+      const base=backgrounds(el.parentElement).map(bg=>over(rgba(style.backgroundColor),bg));
+      const stops=style.backgroundImage.match(/rgba?\([^)]+\)/g);
+      // SweetAlert hover uses a translucent black gradient over its button fill.
+      return stops ? base.flatMap(bg=>stops.map(stop=>over(rgba(stop),bg))) : base;
+    };
+    return nodes.flatMap(node=>backgrounds(node).map(background=>({color:over(rgba(getComputedStyle(node).color),background),background})));
+  });
+  assert(pairs.length, 'Missing contrast sample: '+label);
+  const luminance = values => {
+    const rgb=values.map(v=>v/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
+    return rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722;
+  };
+  for(const {color,background} of pairs) {
+    const a=luminance(color),b=luminance(background),ratio=(Math.max(a,b)+.05)/(Math.min(a,b)+.05);
+    assert(ratio>=4.5, `${label}: ${color} on ${background} = ${ratio.toFixed(2)}:1`);
+  }
+}
+
 (async () => {
   const browser = await chromium.launch({channel:process.env.PONDOK_BROWSER_CHANNEL || 'msedge',headless:true});
   try {
@@ -67,6 +94,7 @@ const institutions = [
     const saves = ()=>requests.filter(x=>x.action==='savePondokEvaluation');
     await page.goto('http://pondok.test/');
     await page.waitForFunction(()=>typeof Swal!=='undefined');
+    await checkContrast(page.locator('#loginBtn'),'login action');
     await hidden('selectionCard');
     await page.locator('#loginUser').fill('fixture');
     await page.locator('#loginPass').fill('fixture-password');
@@ -74,9 +102,18 @@ const institutions = [
     await waitVisible('modeCard');
     await page.locator('.swal2-container').waitFor({state:'hidden'});
     await hidden('selectionCard'); await hidden('adminCard');
+    await checkContrast(page.locator('.mode-choice strong'),'mode headings');
+    await checkContrast(page.locator('.workflow-step .step-label'),'workflow labels');
+    await checkContrast(page.locator('.workflow-step .step-dot'),'workflow numbers');
+    const modeColors=await page.locator('.mode-choice').evaluateAll(nodes=>nodes.map(n=>getComputedStyle(n).backgroundColor));
+    assert.notEqual(modeColors[0],modeColors[1],'Two modes have distinct colors');
     await page.getByRole('button',{name:'นิเทศทั่วไป',exact:false}).click();
     await visible('selectionCard'); await pick();
     assert.equal(await page.locator('#histBody button').count(),4);
+    await checkContrast(page.locator('#histBody .btn-edit'),'edit action');
+    await checkContrast(page.locator('#histBody .btn-danger'),'delete action');
+    await checkContrast(page.locator('#startBtn'),'start action');
+    await checkContrast(page.locator('#selectionCard .btn-outline2'),'back action');
     assert((await page.locator('#historyTitle').innerText()).includes('ปอเนาะทดสอบ ก'));
     await visible('reportsCard');
     const historyLoads=requests.filter(x=>x.action==='getEvaluations').length;
@@ -86,6 +123,20 @@ const institutions = [
     assert.equal(requests.filter(x=>x.action==='getEvaluations').length,historyLoads,'No duplicate history load on opening');
     assert.equal(await page.locator('#formPanels .q-scale').count(),16);
     assert.deepEqual(await page.locator('#formPanels .q-scale').first().locator('button').allTextContents(),['2','1','0','N/A']);
+    await checkContrast(page.locator('#formPanels .q-scale button'),'unselected ratings');
+    await checkContrast(page.locator('#instituteCard > summary,#pinCard > summary'),'secondary menu');
+    await checkContrast(page.locator('#finalSubmitBtn'),'save action');
+    const firstRating=page.locator('#formPanels .q-scale').first();
+    for(const value of ['2','1','0','NA']) {
+      const button=firstRating.locator(`[data-v="${value}"]`);
+      await button.click();
+      assert.equal(await button.getAttribute('aria-pressed'),'true');
+      assert.equal(await firstRating.locator('[aria-pressed="true"]').count(),1);
+      await checkContrast(button,'selected '+value);
+      assert.equal(await button.evaluate(el=>getComputedStyle(el,'::after').content),'"✓"','Selection has a non-color cue');
+      if(process.env.PONDOK_SCREENSHOT_DIR && value==='2') await firstRating.screenshot({path:path.join(process.env.PONDOK_SCREENSHOT_DIR,`ratings-${mobile?'mobile':'desktop'}.png`)});
+      await button.click(); assert.equal(await button.getAttribute('aria-pressed'),'false');
+    }
     if(process.env.PONDOK_SCREENSHOT_DIR) await page.screenshot({path:path.join(process.env.PONDOK_SCREENSHOT_DIR,`form-${mobile?'mobile':'desktop'}.png`)});
     await page.locator('#evalRound').selectOption('อื่นๆ');
     await page.locator('#finalSubmitBtn').click(); await confirm();
@@ -101,6 +152,8 @@ const institutions = [
     assert.equal(saves().length,0,'Cancel keeps draft');
     // A second submit during the confirmation must not replace it or send twice.
     await page.locator('#finalSubmitBtn').click();
+    await checkContrast(page.locator('.swal2-confirm'),'confirm save');
+    await checkContrast(page.locator('.swal2-cancel'),'cancel save');
     await page.evaluate(()=>submitFinal({preventDefault(){}}));
     assert.equal(await page.locator('.swal2-container').count(),1);
     await cancel(); assert.equal(saves().length,0);
@@ -131,6 +184,8 @@ const institutions = [
     await page.reload(); await waitVisible('modeCard');
     assert.equal(requests.filter(x=>x.action==='login').length,1,'Session survives reload');
     await page.getByRole('button',{name:'นิเทศเต็มรูปแบบ',exact:false}).click();
+    assert.equal(await page.locator('.mode-choice[data-mode="full"]').getAttribute('aria-pressed'),'true');
+    await checkContrast(page.locator('#fullFormPicker .btn-purple'),'full mode next');
     await page.locator('#fullFormChoice').selectOption('0');
     await page.getByRole('button',{name:'ถัดไป',exact:true}).click(); await pick();
     await page.locator('#histBody tr').filter({hasText:'2026-09-29'}).getByRole('button',{name:'แก้ไข',exact:true}).click();
@@ -152,12 +207,14 @@ const institutions = [
       }
       await waitVisible('evaluationSection');
       assert((await page.locator('#evaluationTitle').innerText()).startsWith(`แบบที่ ${no}`));
+      await checkContrast(page.locator('#formPanels .section-head .title'), 'form '+no+' section headings');
       if(no===1) await page.locator('#evalRound').selectOption(round);
       else assert.equal(await page.locator('#evalRound').inputValue(),round);
       if(no===6) {await page.locator('#f6_strengths').fill('จุดแข็งทดสอบ'); await hidden('progressBox');}
       else if([2,4,7].includes(no)) await page.locator('#formPanels .q-scale').first().locator('button').first().click();
       else await page.locator('#formPanels select[data-sel]').first().selectOption({index:1});
       if(no===1) await page.locator('#formPanels input[type=checkbox]').first().check();
+      if([2,4,7].includes(no)) await checkContrast(page.locator('#formPanels .q-scale button.sel'),'form '+no+' selected score');
       await page.locator('#finalSubmitBtn').click(); await confirm(); await waitVisible('savedCard');
       const payload=saves().at(-1).payload;
       assert.equal(payload.evalData.formNo,no); assert.equal(payload.pondokData.id,'TEST-A'); assert(!payload.editRow);
@@ -166,6 +223,8 @@ const institutions = [
     await page.getByRole('button',{name:'ดูประวัติ / รายงาน',exact:true}).click();
     await page.waitForFunction(()=>document.getElementById('histCount').textContent==='10 รายการ');
     await page.locator('#reportsCard > summary').click();
+    await checkContrast(page.locator('#generateReportBtn'),'AI report action');
+    await checkContrast(page.locator('#printReportBtn'),'disabled print action');
     await page.locator('#reportKind').selectOption('4'); await page.locator('#generateReportBtn').click(); await visible('reportPreview');
     assert((await page.locator('#reportPreview').innerText()).includes('สังเกตชั้นเรียน'));
     await page.locator('#reportKind').selectOption('summary'); await page.locator('#generateReportBtn').click();
@@ -187,7 +246,7 @@ const institutions = [
     if(process.env.PONDOK_SCREENSHOT_DIR) {await home(); await page.screenshot({path:path.join(process.env.PONDOK_SCREENSHOT_DIR,`home-${mobile?'mobile':'desktop'}.png`)});}
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'No page-level horizontal overflow');
     assert.deepEqual(errors,[],'No uncaught browser errors');
-    console.log(`PASS ${mobile?'mobile':'desktop'}: login, both modes, 8 forms, rounds, edit/restore, delete confirm, dirty guard, save failure, success/home, reports, stale history`);
+    console.log(`PASS ${mobile?'mobile':'desktop'}: login, both modes, 8 forms, rounds, edit/restore, delete confirm, dirty guard, save failure, success/home, reports, stale history, semantic colors/contrast/selected cues`);
     await context.close();
   }
   } finally {await browser.close();}

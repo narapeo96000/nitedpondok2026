@@ -24,7 +24,16 @@
       --amber-soft: #fef3c7;
       --amber-light: #fffbeb;
       --ink: #0f172a;
-      --muted: #64748b;
+      --muted: #475569;
+      --blue: #1d4ed8;
+      --blue-dark: #1e40af;
+      --blue-soft: #dbeafe;
+      --blue-light: #eff6ff;
+      --purple: #6d28d9;
+      --purple-dark: #5b21b6;
+      --purple-light: #f5f3ff;
+      --danger: #b91c1c;
+      --edit: #92400e;
       --border: #d5e0ea;
       --white: #ffffff;
       --green-soft: #d1fae5;
@@ -90,7 +99,7 @@
       font-family: inherit; color: var(--ink); background: #fff;
       transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
     }
-    textarea::placeholder { color: #94a3b8; opacity: 1; }
+    input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
     textarea:focus {
       outline: none; border-color: var(--primary);
       box-shadow: 0 0 0 3px rgba(15,118,110,.14), 0 4px 12px rgba(15,118,110,.08);
@@ -122,12 +131,17 @@
       min-height: 46px; padding: 10px 18px; font-size: 1rem; cursor: pointer;
       text-decoration: none;
     }
-    .btn:disabled { opacity: .55; cursor: not-allowed; }
-    .btn-primary { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: #fff; box-shadow: 0 4px 12px rgba(15,118,110,.25); }
-    .btn-success { background: #16a34a; color: #fff; }
+    .btn:disabled { background:#e2e8f0; color:#475569; border:1.5px solid #cbd5e1; box-shadow:none; opacity:1; cursor:not-allowed; }
+    .btn-primary { background: var(--primary); color: #fff; box-shadow: 0 4px 12px rgba(15,118,110,.20); }
+    .btn-success { background: #166534; color: #fff; }
     .btn-outline { background: #fff; border: 1.5px solid var(--primary); color: var(--primary-deep); }
-    .btn-outline2 { background: #fff; border: 1.5px solid var(--border); color: var(--muted); }
-    .btn-danger { background: #ef4444; color: #fff; }
+    .btn-outline2 { background: #f1f5f9; border: 1.5px solid #94a3b8; color: #334155; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-info { background: var(--blue-light); border:1.5px solid var(--blue); color:var(--blue-dark); }
+    .btn-edit { background: var(--amber-light); border:1.5px solid var(--edit); color:var(--edit); }
+    .btn-purple { background:var(--purple); color:#fff; }
+    .btn:not(:disabled):hover { filter:brightness(.94); }
+    .btn:not(:disabled):active { transform:translateY(1px); }
     .btn-sm { min-height: 34px; padding: 4px 12px; font-size: .85rem; border-radius: 10px; }
     .w-100 { width: 100%; }
     .text-center { text-align: center; }
@@ -170,13 +184,13 @@
 
     /* สีประจำเครื่องมือนิเทศ - ช่วยแยกแบบฟอร์มภาคสนามให้เห็นได้ทันที */
     .form-tab { border-top-width: 5px; }
-    .form-tab-1, .form-theme-1 { --form-color: #2563eb; --form-soft: #dbeafe; --form-bg: #eff6ff; }
-    .form-tab-2, .form-theme-2 { --form-color: #7c3aed; --form-soft: #ede9fe; --form-bg: #f5f3ff; }
-    .form-tab-3, .form-theme-3 { --form-color: #0891b2; --form-soft: #cffafe; --form-bg: #ecfeff; }
-    .form-tab-4, .form-theme-4 { --form-color: #059669; --form-soft: #d1fae5; --form-bg: #ecfdf5; }
-    .form-tab-5, .form-theme-5 { --form-color: #ca8a04; --form-soft: #fef3c7; --form-bg: #fefce8; }
-    .form-tab-6, .form-theme-6 { --form-color: #db2777; --form-soft: #fce7f3; --form-bg: #fdf2f8; }
-    .form-tab-7, .form-theme-7 { --form-color: #ea580c; --form-soft: #ffedd5; --form-bg: #fff7ed; }
+    .form-tab-1, .form-theme-1 { --form-color: #1d4ed8; --form-soft: #dbeafe; --form-bg: #eff6ff; }
+    .form-tab-2, .form-theme-2 { --form-color: #6d28d9; --form-soft: #ede9fe; --form-bg: #f5f3ff; }
+    .form-tab-3, .form-theme-3 { --form-color: #0e7490; --form-soft: #cffafe; --form-bg: #ecfeff; }
+    .form-tab-4, .form-theme-4 { --form-color: #047857; --form-soft: #d1fae5; --form-bg: #ecfdf5; }
+    .form-tab-5, .form-theme-5 { --form-color: #92400e; --form-soft: #fef3c7; --form-bg: #fefce8; }
+    .form-tab-6, .form-theme-6 { --form-color: #9d174d; --form-soft: #fce7f3; --form-bg: #fdf2f8; }
+    .form-tab-7, .form-theme-7 { --form-color: #9a3412; --form-soft: #ffedd5; --form-bg: #fff7ed; }
     .form-tab-8, .form-theme-8 { --form-color: #0f766e; --form-soft: #ccfbf1; --form-bg: #f0fdfa; }
     .form-tab[class*="form-tab-"] { border-top-color: var(--form-color); }
     .form-tab[class*="form-tab-"].active { background: linear-gradient(135deg, var(--form-color), color-mix(in srgb, var(--form-color) 76%, #111827)); }
@@ -184,7 +198,7 @@
     .form-theme[class*="form-theme-"] .section-head .title,
     .form-theme[class*="form-theme-"] .section-head .code { color: var(--form-color); }
     .form-theme[class*="form-theme-"] .section-head .pts { color: var(--form-color); }
-    .form-theme[class*="form-theme-"] .q-scale button.sel { background: var(--form-color); border-color: var(--form-color); }
+    .form-theme[class*="form-theme-"] .q-scale button.sel { background: var(--score-color, var(--form-color)); border-color: var(--score-color, var(--form-color)); color:#fff; }
     .form-theme[class*="form-theme-"] .total-box { background: linear-gradient(135deg, var(--form-color), color-mix(in srgb, var(--form-color) 76%, #111827)); }
     .form-theme[class*="form-theme-"] .alert-info { background: var(--form-bg); border-color: var(--form-soft); }
     .form-theme[class*="form-theme-"] .form-section { border-color: color-mix(in srgb, var(--form-color) 22%, #d5e0ea); }
@@ -197,7 +211,15 @@
       background: #fff; font-weight: 700; font-size: .9rem; color: var(--muted); cursor: pointer; font-family: inherit;
     }
     .q-scale button.sel { background: var(--primary); border-color: var(--primary); color: #fff; }
-    .q-scale button.na.sel { background: var(--amber); border-color: var(--amber); color: #fff; }
+    .q-scale button.na { --score-color:#475569; --score-bg:#f1f5f9; }
+    .q-scale button.na.sel { background:#475569; border-color:#475569; color:#fff; }
+    .form-theme:is(.form-theme-7,.form-theme-8) .q-scale button[data-v="2"] { --score-color:#166534; --score-bg:#f0fdf4; }
+    .form-theme:is(.form-theme-7,.form-theme-8) .q-scale button[data-v="1"] { --score-color:#92400e; --score-bg:#fffbeb; }
+    .form-theme:is(.form-theme-7,.form-theme-8) .q-scale button[data-v="0"] { --score-color:#991b1b; --score-bg:#fef2f2; }
+    .q-scale button { position:relative; color:var(--score-color,var(--muted)); background:var(--score-bg,#fff); border-color:var(--score-color,#94a3b8); }
+    .q-scale button.sel { box-shadow:0 0 0 2px #fff,0 0 0 4px var(--score-color,var(--form-color,var(--primary))); }
+    .q-scale button.sel::after { content:'✓'; position:absolute; top:1px; right:4px; font-size:.7rem; line-height:1; }
+    .q-scale button:hover:not(.sel) { box-shadow:inset 0 0 0 1px currentColor; }
 
     .form-section { border: 1px solid var(--border); border-radius: 14px; margin-bottom: 14px; overflow: hidden; background: #fff; }
     .section-head {
@@ -236,7 +258,7 @@
       border-radius: 16px; padding: 16px; text-align: center; margin-top: 14px;
     }
     .total-box .big { font-size: 2rem; font-weight: 700; line-height: 1.1; }
-    .total-box .lvl { display: inline-block; margin-top: 6px; background: rgba(217,119,6,.85); border-radius: 999px; padding: 4px 16px; font-weight: 600; }
+    .total-box .lvl { display: inline-block; margin-top: 6px; background: #fff; color:var(--primary-deep); border-radius: 999px; padding: 4px 16px; font-weight: 600; }
 
     table { width: 100%; border-collapse: collapse; font-size: .85rem; }
     th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid #eef5f3; vertical-align: top; word-break: break-word; overflow-wrap: anywhere; }
@@ -403,7 +425,8 @@
       #reportPreview .report-content,#reportPreview .report-meta { break-inside:avoid; }
     }
     /* Field-friendly navigation and readable touch targets. */
-    :focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
+    :focus-visible { outline: 3px solid var(--blue); outline-offset: 4px; }
+    .q-scale button:focus-visible { outline:3px dashed var(--blue-dark); outline-offset:5px; }
     .work-nav { display:flex; gap:8px; flex-wrap:wrap; padding:12px; background:#fff; border:1px solid var(--border); border-radius:14px; margin-bottom:16px; }
     .work-nav a { padding:10px 14px; border-radius:10px; color:var(--primary-deep); background:var(--primary-light); text-decoration:none; font-weight:600; }
     .work-nav a:first-child { background:var(--primary); color:#fff; }
@@ -411,12 +434,14 @@
     .workflow-intro h2 { margin:0 0 6px; font-size:1.35rem; color:var(--primary-deep); }
     .workflow-intro p { margin:0; color:var(--muted); line-height:1.7; }
     .workflow-steps { display:flex; align-items:center; gap:8px; margin-top:14px; }
-    .workflow-step { flex:1; display:flex; align-items:center; gap:7px; min-width:0; color:#94a3b8; font-size:.86rem; font-weight:600; }
-    .workflow-step .step-dot { width:28px; height:28px; flex:0 0 28px; display:grid; place-items:center; border-radius:50%; background:#e2e8f0; color:#64748b; }
+    .workflow-step { flex:1; display:flex; align-items:center; gap:7px; min-width:0; color:#475569; font-size:.86rem; font-weight:600; }
+    .workflow-step .step-dot { width:28px; height:28px; flex:0 0 28px; display:grid; place-items:center; border-radius:50%; background:#e2e8f0; color:#475569; }
     .workflow-step .step-label { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .workflow-step.done,.workflow-step.active { color:var(--primary-deep); }
     .workflow-step.done .step-dot { background:var(--green-soft); color:var(--green-dark); }
-    .workflow-step.active .step-dot { background:var(--primary); color:#fff; box-shadow:0 0 0 4px var(--primary-soft); }
+    .workflow-step.active { color:var(--blue-dark); }
+    .workflow-step.active .step-label { text-decoration:underline; text-underline-offset:4px; }
+    .workflow-step.active .step-dot { background:var(--blue); color:#fff; box-shadow:0 0 0 4px var(--blue-soft); }
     .workflow-line { height:2px; flex:0 0 24px; background:#e2e8f0; }
     .workflow-line.done { background:#86d8cf; }
     .selection-tip { display:flex; align-items:flex-start; gap:8px; padding:10px 12px; background:#fffbeb; border:1px solid #fde68a; border-radius:10px; margin-top:12px; color:#92400e; line-height:1.55; }
@@ -440,16 +465,40 @@
     }
     @media (prefers-reduced-motion: reduce) { * { scroll-behavior:auto !important; } }
     .mode-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
-    .mode-choice { padding:22px; text-align:left; white-space:normal; border:2px solid var(--border); border-radius:16px; background:var(--primary-light); color:var(--ink); cursor:pointer; font:inherit; }
-    .mode-choice:hover { border-color:var(--primary); }
-    .mode-choice strong { display:block; color:var(--primary-deep); font-size:1.15rem; margin-bottom:8px; }
+    .mode-choice { --mode-color:var(--primary); --mode-bg:var(--primary-light); padding:22px; text-align:left; white-space:normal; border:2px solid var(--mode-color); border-top-width:6px; border-radius:16px; background:var(--mode-bg); color:var(--ink); cursor:pointer; font:inherit; }
+    .mode-choice[data-mode="full"] { --mode-color:var(--purple-dark); --mode-bg:var(--purple-light); }
+    .mode-choice:hover,.mode-choice[aria-pressed="true"] { box-shadow:0 0 0 2px var(--mode-color); }
+    .mode-choice strong { display:block; color:var(--mode-color); font-size:1.15rem; margin-bottom:8px; }
     .mode-choice span { display:block; line-height:1.7; }
+    .mode-choice .mode-selected { display:none; margin-top:10px; font-weight:700; color:var(--mode-color); }
+    .mode-choice[aria-pressed="true"] .mode-selected { display:block; }
     .flow-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:16px; }
     .flow-context { background:var(--primary-light); border-left:4px solid var(--primary); padding:14px; border-radius:12px; margin-bottom:16px; line-height:1.8; }
     details > summary { cursor:pointer; font-weight:600; color:var(--primary-deep); padding:8px 0; }
     details[open] > summary { margin-bottom:12px; }
     .saved-mark { font-size:2.5rem; color:var(--green-dark); }
     #savedCard { border-top:5px solid var(--primary); }
+    #savedCard h3 { color:var(--green-dark); }
+    #fullFormPicker { background:var(--purple-light); border:1px solid #c4b5fd; border-radius:12px; padding:16px; }
+    #fullFormPicker label { color:var(--purple-dark); }
+    #appSection[data-mode="full"] .flow-context { background:var(--purple-light); border-color:var(--purple); color:var(--purple-dark); }
+    #selectionCard { border-top:4px solid var(--blue); }
+    #historyCard { border-top:4px solid var(--blue); }
+    #historyCard .card-title h4 { color:var(--blue-dark); border-left-color:var(--blue); }
+    #historyCard thead th { color:var(--blue-dark); background:var(--blue-light); }
+    #histBody tr:nth-child(even) { background:#f8fafc; }
+    #histBody tr:hover { background:var(--blue-light); }
+    #instituteCard > summary { color:var(--edit); background:var(--amber-light); border-left-color:var(--edit); }
+    #pinCard > summary,#reportsCard > summary { color:var(--blue-dark); background:var(--blue-light); border-left-color:var(--blue); }
+    #adminCard > summary { color:var(--purple-dark); background:var(--purple-light); border-left-color:var(--purple); }
+    details.card > summary { padding:12px; border-left:4px solid; border-radius:8px; }
+    .alert-warn { border-left:4px solid var(--edit); }
+    label { color:#334155; }
+    .header-home { background:#fff; color:var(--primary-deep); font-weight:700; }
+    .logout-btn { min-height:44px; font-family:inherit; }
+    .swal2-styled.swal2-confirm { background-color:var(--primary); }
+    .swal2-styled.swal2-cancel { background-color:#e2e8f0; color:#334155; }
+    .swal2-styled:focus-visible { outline:3px solid var(--blue); outline-offset:4px; }
     .workflow-step .step-label { white-space:normal; }
     @media (max-width:640px) { .mode-grid { grid-template-columns:1fr; } .flow-actions .btn { flex:1 1 auto; } }
   </style>
@@ -463,7 +512,7 @@
     </div>
     <div class="header-user">
       <span id="headerUserText2" class="small"></span>
-      <button type="button" class="logout-btn" onclick="goHome()">หน้าแรก</button>
+      <button type="button" class="logout-btn header-home" onclick="goHome()">หน้าแรก</button>
       <button class="logout-btn" onclick="doLogout()">ออกจากระบบ</button>
     </div>
   </div>
@@ -579,14 +628,14 @@
 
       <div class="card" id="modeCard">
         <div class="mode-grid" id="modeChoices">
-          <button type="button" class="mode-choice" onclick="chooseMode('general')"><strong>นิเทศทั่วไป</strong><span>สำหรับผู้นิเทศทั่วไป</span><span>แบบที่ 8 · หน้าเดียว · 32 คะแนน</span></button>
-          <button type="button" class="mode-choice" onclick="chooseMode('full')"><strong>นิเทศเต็มรูปแบบ</strong><span>สำหรับศึกษานิเทศก์</span><span>เลือกเครื่องมือแบบที่ 1–7 ตามงานที่นิเทศ</span></button>
+          <button type="button" class="mode-choice" data-mode="general" aria-pressed="false" onclick="chooseMode('general')"><strong>นิเทศทั่วไป</strong><span>สำหรับผู้นิเทศทั่วไป</span><span>แบบที่ 8 · หน้าเดียว · 32 คะแนน</span><span class="mode-selected" aria-hidden="true">✓ เลือกแล้ว</span></button>
+          <button type="button" class="mode-choice" data-mode="full" aria-pressed="false" onclick="chooseMode('full')"><strong>นิเทศเต็มรูปแบบ</strong><span>สำหรับศึกษานิเทศก์</span><span>เลือกเครื่องมือแบบที่ 1–7 ตามงานที่นิเทศ</span><span class="mode-selected" aria-hidden="true">✓ เลือกแล้ว</span></button>
         </div>
         <div id="fullFormPicker" class="section-hidden mt-3">
           <label for="fullFormChoice">เลือกเครื่องมือที่จะใช้ในครั้งนี้</label>
           <select id="fullFormChoice" class="form-select"><option value="">— เลือกแบบนิเทศ —</option></select>
           <p class="small text-muted" id="fullFormHint">บันทึกทีละแบบ และทำแบบถัดไปที่สถาบันเดิมได้โดยไม่ต้องเลือกสถานที่ซ้ำ</p>
-          <button type="button" class="btn btn-primary mt-2" onclick="continueFullMode()">ถัดไป</button>
+          <button type="button" class="btn btn-purple mt-2" onclick="continueFullMode()">ถัดไป</button>
         </div>
       </div>
 
@@ -634,9 +683,9 @@
         <p id="savedSummary" style="white-space:pre-line;line-height:1.8;"></p>
         <p class="small text-muted">ข้อมูลถูกบันทึกแล้ว ไม่ต้องกดบันทึกซ้ำ</p>
         <div class="flow-actions">
-          <button type="button" class="btn btn-primary" onclick="goHome()">กลับหน้าแรก</button>
-          <button type="button" class="btn btn-outline2" onclick="viewSavedHistory()">ดูประวัติ / รายงาน</button>
-          <button type="button" class="btn btn-outline2 section-hidden" id="nextFullBtn" onclick="nextFullForm()">ทำแบบอื่นที่สถาบันเดิม</button>
+          <button type="button" class="btn btn-info" onclick="goHome()">กลับหน้าแรก</button>
+          <button type="button" class="btn btn-info" onclick="viewSavedHistory()">ดูประวัติ / รายงาน</button>
+          <button type="button" class="btn btn-purple section-hidden" id="nextFullBtn" onclick="nextFullForm()">ทำแบบอื่นที่สถาบันเดิม</button>
         </div>
       </div>
 
@@ -684,8 +733,8 @@
             <summary>ตำแหน่งบนแผนที่ (บันทึกพิกัดแยกจากแบบนิเทศ)</summary>
             <div class="card-title"><h4>ปักหมุดพิกัดแผนที่</h4><span class="badge lv lv-blue">ดาวเทียม</span></div>
             <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:8px;">
-              <button type="button" class="btn btn-outline2 btn-sm" id="pinGpsBtn" onclick="pinLocation()">📍 ปักหมุดตำแหน่งปัจจุบัน (GPS)</button>
-              <button type="button" class="btn btn-outline2 btn-sm" onclick="pinManual()">🖱️ คลิกเลือกบนแผนที่</button>
+              <button type="button" class="btn btn-info btn-sm" id="pinGpsBtn" onclick="pinLocation()">📍 ปักหมุดตำแหน่งปัจจุบัน (GPS)</button>
+              <button type="button" class="btn btn-info btn-sm" onclick="pinManual()">🖱️ คลิกเลือกบนแผนที่</button>
               <button type="button" class="btn btn-success btn-sm" id="savePinBtn" onclick="savePin()" disabled>💾 บันทึกพิกัด</button>
             </div>
             <div id="pinMapBox" style="height:260px; border-radius:10px; margin-bottom:8px;"></div>
@@ -731,7 +780,7 @@
               <div id="reportRecordWrap" class="section-hidden"><label for="reportRecord">รายการนิเทศที่ใช้</label><select id="reportRecord" class="form-select"></select></div>
             </div>
             <div class="alert alert-info mt-3 small" id="reportHelp">รายงานสรุปด้วย AI เป็นฉบับร่าง กรุณาตรวจสอบก่อนนำไปใช้</div>
-            <div class="report-actions no-print"><button type="button" class="btn btn-primary" id="generateReportBtn" onclick="generateInspectionReport()">✨ สร้างรายงานสรุปด้วย AI</button><button type="button" class="btn btn-outline2" id="printReportBtn" onclick="printInspectionReport()" disabled>🖨️ Preview / ส่งออก PDF</button></div>
+            <div class="report-actions no-print"><button type="button" class="btn btn-purple" id="generateReportBtn" onclick="generateInspectionReport()">✨ สร้างรายงานสรุปด้วย AI</button><button type="button" class="btn btn-info" id="printReportBtn" onclick="printInspectionReport()" disabled>🖨️ Preview / ส่งออก PDF</button></div>
             <div id="reportPreview" class="report-preview mt-3 section-hidden" aria-live="polite"></div>
           </details>
           <!-- บันทึกการนิเทศ -->
@@ -1263,7 +1312,7 @@
         confirmButtonText: 'ออกโดยไม่บันทึก',
         cancelButtonText: 'กลับไปบันทึก',
         focusCancel: true,
-        confirmButtonColor: '#ef4444'
+        confirmButtonColor: '#b91c1c'
       });
       return result.isConfirmed;
     }
@@ -1304,8 +1353,16 @@
 
     function modeLabel() { return inspectionMode === 'full' ? 'นิเทศเต็มรูปแบบ' : 'นิเทศทั่วไป'; }
 
+    function updateModeStyle() {
+      $('appSection').dataset.mode = inspectionMode;
+      document.querySelectorAll('.mode-choice[data-mode]').forEach(button => {
+        button.setAttribute('aria-pressed', String(button.dataset.mode === inspectionMode));
+      });
+    }
+
     function showWorkflowStage(stage, focus = true) {
       workflowStage = stage;
+      updateModeStyle();
       const selecting = stage === 'select';
       $('modeCard').classList.toggle('section-hidden', stage !== 'mode');
       $('modeChoices').classList.toggle('section-hidden', continuingAtSamePondok);
@@ -1334,6 +1391,7 @@
     async function chooseMode(mode) {
       if (!['full', 'general'].includes(mode) || !session.username || workflowStage !== 'mode') return;
       inspectionMode = mode;
+      updateModeStyle();
       continuingAtSamePondok = false;
       $('fullFormPicker').classList.toggle('section-hidden', mode !== 'full');
       if (mode === 'general') { curForm = ACTIVE_FORM_INDEX; showWorkflowStage('select'); $('selPondokSearch').focus(); }
@@ -1705,7 +1763,7 @@
         const rnd = roundDisplay(d.round);
         const pctCell = (h.pct !== '' && h.pct != null && !isNaN(Number(h.pct))) ? Number(h.pct) + '%' : '—';
         const editBtn = recordFormIndex(h) >= 0
-          ? '<button type="button" class="btn btn-sm btn-outline history-action" title="แก้ไขบันทึกนี้" onclick="editRecord(' + i + ')">แก้ไข</button>'
+          ? '<button type="button" class="btn btn-sm btn-edit history-action" title="แก้ไขบันทึกนี้" onclick="editRecord(' + i + ')">แก้ไข</button>'
           : '<span class="small text-muted">ข้อมูลเดิม</span>';
         const delBtn = session.username
           ? '<button type="button" class="btn btn-sm btn-danger history-action" title="ลบบันทึกนี้" onclick="deleteRecord(' + i + ')">ลบ</button>'
@@ -1740,7 +1798,7 @@
         confirmButtonText: '🗑 ลบเลย',
         cancelButtonText: 'ยกเลิก',
         focusCancel: true,
-        confirmButtonColor: '#ef4444'
+        confirmButtonColor: '#b91c1c'
       });
       if (!ask.isConfirmed || selectedPondok !== selection) return;
       showBusy('กำลังลบบันทึก', 'กำลังลบประวัติการนิเทศที่เลือก');
@@ -1860,8 +1918,8 @@
           const code = sec.code + '.' + sec.items.indexOf(it);
           html += '<div class="q-item"><div class="q-text">' + esc(it.text) + '</div>';
           if (it.type === 'scale' || (!it.type)) {
-            html += '<div class="q-scale">' + it.scale.map(o =>
-              '<button type="button" data-code="' + code + '" data-v="' + o.v + '" class="' + (o.na ? 'na' : '') + '" onclick="ansClick(this)">' + esc(o.t) + '</button>').join('') + '</div>';
+            html += '<div class="q-scale" role="group" aria-label="' + esc(it.text) + '">' + it.scale.map(o =>
+              '<button type="button" aria-pressed="false" data-code="' + code + '" data-v="' + o.v + '" class="' + (o.na ? 'na' : '') + '" onclick="ansClick(this)">' + esc(o.t) + '</button>').join('') + '</div>';
           } else if (it.type === 'select') {
             html += '<select class="form-select" data-sel="' + code + '" onchange="selChange(this)">' +
               '<option value="">— เลือก —</option>' +
@@ -1891,7 +1949,7 @@
           '<div class="table-wrap"><table class="ap-table"><thead><tr><th>ประเด็นพัฒนา</th><th>กิจกรรม</th><th>ผู้รับผิดชอบ</th><th>กำหนดเสร็จ</th><th>หลักฐาน</th><th></th></tr></thead>' +
           '<tbody id="apBody"></tbody></table></div>' +
           '<button type="button" class="btn btn-outline w-100 mt-2" onclick="addApRow()">➕ เพิ่มรายการแผนพัฒนา</button>' +
-          '<button type="button" class="ai-btn btn btn-outline w-100 mt-2" onclick="aiDraftPlan()">✨ ให้ AI ช่วยร่างแผนพัฒนา (น้องศึกษา)</button>' +
+          '<button type="button" class="ai-btn btn btn-purple w-100 mt-2" onclick="aiDraftPlan()">✨ ให้ AI ช่วยร่างแผนพัฒนา (น้องศึกษา)</button>' +
           '<label class="mt-3">📝 หมายเหตุ/ข้อเสนอแนะเพิ่มเติม (AI จะเขียนข้อเสนอไว้ที่นี่)</label><textarea id="f6_comment" oninput="f6Input(this)"></textarea>' +
           '</div></div>';
       }
@@ -1938,7 +1996,9 @@
     function applyState(f) {
       document.querySelectorAll('#formPanels .q-scale button').forEach(b => {
         const v = answers[b.dataset.code];
-        if (v !== undefined && String(v) === b.dataset.v) b.classList.add('sel');
+        const selected = v !== undefined && String(v) === b.dataset.v;
+        b.classList.toggle('sel', selected);
+        b.setAttribute('aria-pressed', String(selected));
       });
       document.querySelectorAll('#formPanels select[data-sel]').forEach(sl => {
         if (answers[sl.dataset.sel] !== undefined) sl.value = answers[sl.dataset.sel];
@@ -1980,8 +2040,9 @@
       const raw = btn.dataset.v;
       const val = raw === 'NA' ? 'NA' : Number(raw);
       const wasSel = btn.classList.contains('sel');
-      btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('sel'));
+      btn.parentElement.querySelectorAll('button').forEach(b => { b.classList.remove('sel'); b.setAttribute('aria-pressed', 'false'); });
       if (wasSel) { delete answers[code]; } else { btn.classList.add('sel'); answers[code] = val; }
+      btn.setAttribute('aria-pressed', String(!wasSel));
       markEvalDirty();
       recalc();
     }
@@ -2266,6 +2327,8 @@
       $('reportPreview').classList.add('section-hidden');
       $('printReportBtn').disabled = true;
       $('generateReportBtn').textContent = kind === 'summary' ? '✨ สร้างรายงานสรุปด้วย AI' : '👁️ สร้าง Preview แบบฟอร์ม';
+      $('generateReportBtn').classList.toggle('btn-purple', kind === 'summary');
+      $('generateReportBtn').classList.toggle('btn-info', kind !== 'summary');
       $('reportHelp').textContent = kind === 'summary'
         ? 'สรุปจากประวัติการนิเทศ 10 รายการล่าสุด กรุณาตรวจสอบความถูกต้องก่อนพิมพ์หรือส่งออก PDF'
         : 'รายงานรายแบบจัดรูปแบบจากคำตอบและคะแนนที่บันทึกไว้ ไม่ใช้ AI';
