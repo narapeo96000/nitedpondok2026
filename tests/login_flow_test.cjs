@@ -60,6 +60,11 @@ const backendCtx = vm.createContext({SpreadsheetApp:{openById:()=>({getSheetByNa
   assert.equal(start,3); assert.equal(col,1); assert.equal(count,2); return {getValues:()=>rows};
 }})})}});
 vm.runInContext(backend, backendCtx);
+const invalidNew = vm.runInContext("validateNewPondok({id:'',name:'',students:'2',foreign:'3',coords:'999, 1'})", backendCtx);
+assert(invalidNew.errors.id && invalidNew.errors.name && invalidNew.errors.foreign && invalidNew.errors.coords, 'New institution validation catches required/count/coordinate errors');
+const validNew = vm.runInContext("validateNewPondok({id:'NEW-001',name:'ปอเนาะใหม่',coords:'6.426, 101.825'})", backendCtx);
+assert.equal(Object.keys(validNew.errors).length, 0);
+assert.equal(validNew.data.coords, '6.426, 101.825');
 assert.equal(vm.runInContext("getPondokData({id:'A'}).data.row", backendCtx), 3);
 assert.equal(vm.runInContext("getPondokData({id:'B'}).data.row", backendCtx), 4);
 assert.equal(vm.runInContext("getPondokData({id:'missing'}).success", backendCtx), false);

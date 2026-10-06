@@ -71,6 +71,7 @@ function dispatchAction(action, payload) {
   if (action === 'getPondokList') return getPondokList();
   if (action === 'getStatsPondok') return getStatsPondok();
   if (action === 'getPondokData') return getPondokData(payload);
+  if (action === 'addPondok') return addPondok(payload);
   if (action === 'getEvaluations') return getEvaluations(payload);
   if (action === 'savePondokEvaluation') return savePondokEvaluation(payload);
   if (action === 'savePondokPin') return savePondokPin(payload);
@@ -136,7 +137,7 @@ function loginUser(data) {
       }
       return {
         success: true,
-        userData: { username: sheetUser, fname: rows[i][2], tel: rows[i][3], role: role, status: status }
+        userData: { username: sheetUser, fname: rows[i][2], tel: rows[i][3], role: role, status: status, addPondokToken: issueAddPondokToken(sheetUser) }
       };
     }
   }
@@ -651,6 +652,74 @@ function getPondokData(id) {
     }
   }
   return {success: false, message: "ไม่พบข้อมูลปอเนาะ"};
+}
+
+// New institution creation requires a server-issued credential, not a username
+// supplied by the browser. Old/expired sessions can reauthenticate in-place.
+function issueAddPondokToken(username) {
+  const token = Utilities.getUuid() + Utilities.getUuid();
+  CacheService.getScriptCache().put('pondok-add:' + token, username, 21600);
+  return token;
+}
+
+function validateNewPondok(input) {
+  const p = input && typeof input === 'object' ? input : {};
+  const data = {}, errors = {};
+  const limits = {id:50, name:200, address:500, dist:100, subdist:100, phone:40, coords:80};
+  Object.keys(limits).forEach(key => {
+    data[key] = String(p[key] == null ? '' : p[key]).trim();
+    if (data[key].length > limits[key] || /[\x00-\x1f\x7f]/.test(data[key])) errors[key] = 'กรอกข้อความไม่เกิน ' + limits[key] + ' ตัวอักษร และไม่ขึ้นบรรทัดใหม่';
+  });
+  if (!data.id) errors.id = 'กรุณากรอกรหัสสถาบัน';
+  if (!data.name) errors.name = 'กรุณากรอกชื่อสถาบันปอเนาะ';
+  ['staff','students','foreign'].forEach(key => {
+    const value = String(p[key] == null ? '' : p[key]).trim();
+    data[key] = value === '' ? '' : Number(value);
+    if (value && (!/^\d+$/.test(value) || !Number.isSafeInteger(data[key]))) errors[key] = 'กรอกจำนวนเต็มตั้งแต่ 0 ขึ้นไป หรือเว้นว่างหากยังไม่ทราบ';
+  });
+  if (!errors.foreign && !errors.students && data.foreign !== '' && data.students !== '' && data.foreign > data.students) errors.foreign = 'จำนวนผู้เรียนต่างชาติต้องไม่เกินจำนวนผู้เรียนทั้งหมด';
+  if (data.coords) {
+    const pair = data.coords.match(/^([+-]?\d+(?:\.\d+)?)\s*,\s*([+-]?\d+(?:\.\d+)?)$/);
+    if (!pair || Math.abs(Number(pair[1])) > 90 || Math.abs(Number(pair[2])) > 180) errors.coords = 'ใช้รูปแบบ ละติจูด, ลองจิจูด เช่น 6.426, 101.825 (ละติจูด -90 ถึง 90 / ลองจิจูด -180 ถึง 180)';
+    else data.coords = Number(pair[1]) + ', ' + Number(pair[2]);
+  }
+  return {data:data, errors:errors};
+}
+
+function pondokIdKey(id) { return String(id).normalize('NFKC').replace(/\s+/g, '').toLowerCase(); }
+
+function addPondok(payload) {
+  const p = payload || {};
+  const username = String(p.username || '').trim(), token = String(p.token || '');
+  if (!username || !/^[a-f0-9-]{72}$/i.test(token) || CacheService.getScriptCache().get('pondok-add:' + token) !== username) {
+    return {success:false, code:'AUTH_REQUIRED', message:'กรุณายืนยันรหัสผ่านอีกครั้งก่อนเพิ่มสถาบัน ข้อมูลที่กรอกยังอยู่'};
+  }
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const users = ss.getSheetByName(SHEET_USERS);
+  const active = users && users.getDataRange().getValues().slice(1).some(row => String(row[0]).trim() === username && (String(row[4] || '').trim() || 'ใช้งาน') === 'ใช้งาน');
+  if (!active) return {success:false, code:'FORBIDDEN', message:'บัญชีนี้ไม่มีสิทธิ์เพิ่มข้อมูล กรุณาติดต่อผู้ดูแลระบบ'};
+  const checked = validateNewPondok(p.institution);
+  if (Object.keys(checked.errors).length) return {success:false, code:'VALIDATION', errors:checked.errors, message:'กรุณาตรวจสอบช่องที่ระบุ'};
+  const sheet = ss.getSheetByName(SHEET_ADDR_PONDOK);
+  if (!sheet) return {success:false, code:'UNAVAILABLE', message:'ไม่พบทะเบียนสถาบัน กรุณาติดต่อผู้ดูแลระบบ'};
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) return {success:false, code:'BUSY', message:'มีผู้ใช้อื่นกำลังเพิ่มข้อมูล กรุณาลองบันทึกอีกครั้ง'};
+  try {
+    const last = sheet.getLastRow();
+    const existing = last >= 3 ? sheet.getRange(3,1,last-2,1).getValues() : [];
+    const d = checked.data;
+    if (existing.some(row => pondokIdKey(row[0]) === pondokIdKey(d.id))) return {success:false, code:'DUPLICATE_ID', errors:{id:'รหัสนี้มีอยู่แล้ว กรุณากลับไปค้นหาด้วยรหัสนี้ หรือแก้ไขรหัสให้ถูกต้อง'}, message:'ไม่สามารถเพิ่มรหัสสถาบันซ้ำได้'};
+    const row = Math.max(3,last+1);
+    if (row > sheet.getMaxRows()) sheet.insertRowsAfter(sheet.getMaxRows(), row-sheet.getMaxRows());
+    // Preserve leading zeroes in institution IDs/phones, and keep user text
+    // literal: it must never execute as a spreadsheet formula.
+    const literal = value => typeof value === 'string' && /^[=+\-@']/.test(value) ? "'" + value : value;
+    sheet.getRange(row,1,1,6).setNumberFormat('@');
+    sheet.getRange(row,10).setNumberFormat('@');
+    sheet.getRange(row,1,1,PONDOK_ADDR_COLS).setValues([[d.id,d.name,d.address,d.dist,d.subdist,d.phone,d.staff,d.students,d.foreign,d.coords].map(literal)]);
+    SpreadsheetApp.flush();
+    return {success:true, message:'เพิ่มสถาบันปอเนาะเรียบร้อยแล้ว', data:Object.assign({row:row, type:TYPE_PONDOK},d)};
+  } finally { lock.releaseLock(); }
 }
 
 // --- บันทึกพิกัดแผนที่ลงคอลัมน์ J ของ ADDR_PONDOK (ไม่แตะคอลัมน์อื่น) ---

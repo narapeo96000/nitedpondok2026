@@ -42,6 +42,7 @@ async function checkContrast(locator, label) {
   const browser = await chromium.launch({channel:process.env.PONDOK_BROWSER_CHANNEL || 'msedge',headless:true});
   try {
   for (const mobile of [false,true]) {
+    institutions.length = 2;
     const context = await browser.newContext({viewport:mobile ? {width:390,height:844} : {width:1280,height:900}, reducedMotion:'reduce'});
     let records = [
       {row:20,id:'TEST-A',type:'ปอเนาะ',formType:'แบบที่ 8',timestamp:'2026-09-30T09:00:00',supervisor:'ผู้ทดสอบ',totalScore:2,pct:6,details:{formNo:8,round,answers:{'F8.A.0':2,'F8.C.0':0},summary:{good:'รายละเอียดเดิม',support:['การพัฒนาครู/ผู้สอน']}}},
@@ -56,7 +57,7 @@ async function checkContrast(locator, label) {
         const {action,payload} = JSON.parse(req.postData());
         requests.push({action,payload});
         let result;
-        if (action === 'login') result={success:true,userData:{username:'fixture',fname:'ผู้ทดสอบ',role:'user'}};
+        if (action === 'login') result={success:true,userData:{username:'fixture',fname:'ผู้ทดสอบ',role:'user',addPondokToken:'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'}};
         else if (action === 'getPondokList') result={success:true,data:institutions};
         else if (action === 'getPondokData') result={success:true,data:institutions.find(x=>x.id===payload.id)};
         else if (action === 'getEvaluations') {
@@ -70,6 +71,10 @@ async function checkContrast(locator, label) {
             records=records.filter(x=>x.row!==record.row); records.unshift(record); result={success:true};
           }
         } else if(action==='deletePondokEvaluation') { records=records.filter(x=>x.row!==payload.row);result={success:true,message:'ลบเรียบร้อย'}; }
+        else if(action==='addPondok') {
+          const item={...payload.institution,id:payload.institution.id,row:5,type:'ปอเนาะ'};
+          institutions.push(item); result={success:true,message:'เพิ่มสถาบันเรียบร้อย',data:item};
+        }
         else if(action==='generateInspectionReport') result={success:true,reply:'### สรุปจากข้อมูลทดสอบ\n- มีบันทึกการนิเทศ'};
         else throw new Error('Unexpected mocked action: '+action);
         return route.fulfill({contentType:'application/json',body:JSON.stringify(result)});
@@ -108,7 +113,17 @@ async function checkContrast(locator, label) {
     const modeColors=await page.locator('.mode-choice').evaluateAll(nodes=>nodes.map(n=>getComputedStyle(n).backgroundColor));
     assert.notEqual(modeColors[0],modeColors[1],'Two modes have distinct colors');
     await page.getByRole('button',{name:'นิเทศทั่วไป',exact:false}).click();
-    await visible('selectionCard'); await pick();
+    await visible('selectionCard');
+    await page.locator('#selPondokSearch').fill('ปอเนาะใหม่จากผู้ใช้งาน');
+    await visible('newPondokPrompt');
+    await page.locator('#openNewPondokBtn').click();
+    await page.locator('#new_id').fill('NEW-001');
+    await page.locator('#new_name').fill('ปอเนาะใหม่จากผู้ใช้งาน');
+    await page.locator('#new_dist').fill('อำเภอทดสอบ');
+    await page.locator('#newPondokSubmitBtn').click(); await confirm();
+    await waitVisible('historyCard');
+    assert.equal(await page.locator('#selName').innerText(),'NEW-001 · ปอเนาะใหม่จากผู้ใช้งาน');
+    await pick();
     assert.equal(await page.locator('#histBody button').count(),4);
     await checkContrast(page.locator('#histBody .btn-edit'),'edit action');
     await checkContrast(page.locator('#histBody .btn-danger'),'delete action');
@@ -229,6 +244,15 @@ async function checkContrast(locator, label) {
     assert((await page.locator('#reportPreview').innerText()).includes('สังเกตชั้นเรียน'));
     await page.locator('#reportKind').selectOption('summary'); await page.locator('#generateReportBtn').click();
     await page.getByText('สรุปจากข้อมูลทดสอบ',{exact:true}).waitFor();
+    await page.evaluate(() => {
+      window.__printCalled = false;
+      window.print = () => { window.__printCalled = true; };
+      document.getElementById('reportsCard').open = false;
+      printInspectionReport();
+    });
+    await page.waitForFunction(() => window.__printCalled === true);
+    assert.equal(await page.locator('#reportsCard').getAttribute('open'), '');
+    assert(await page.locator('#reportPreview').isVisible(), 'Report remains visible for PDF print');
     await home(); // Report choices must not mark a form dirty.
     await page.getByRole('button',{name:'นิเทศทั่วไป',exact:false}).click(); await pick();
     await page.locator('#histBody').getByRole('button',{name:'ลบ',exact:true}).first().click(); await cancel();

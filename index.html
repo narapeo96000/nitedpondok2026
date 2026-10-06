@@ -419,7 +419,10 @@
       @page { size:A4; margin:18mm; }
       body * { visibility:hidden !important; }
       #reportPreview,#reportPreview * { visibility:visible !important; }
-      #reportPreview { display:block !important; position:absolute; inset:0; width:100%; border:0; padding:0; margin:0; box-shadow:none; }
+      #reportsCard, #reportsCard * { visibility:visible !important; }
+      #reportsCard { display:block !important; position:static !important; }
+      #reportsCard > summary, #reportsCard .report-toolbar, #reportsCard .report-actions, #reportsCard #reportHelp { display:none !important; }
+      #reportPreview { display:block !important; position:relative; width:100%; border:0; padding:0; margin:0; box-shadow:none; }
       #reportPreview .no-print { display:none !important; }
       #reportPreview h2,#reportPreview h3 { break-after:avoid; }
       #reportPreview .report-content,#reportPreview .report-meta { break-inside:avoid; }
@@ -499,6 +502,19 @@
     .swal2-styled.swal2-confirm { background-color:var(--primary); }
     .swal2-styled.swal2-cancel { background-color:#e2e8f0; color:#334155; }
     .swal2-styled:focus-visible { outline:3px solid var(--blue); outline-offset:4px; }
+    .new-pondok-prompt { padding:16px; margin-top:12px; background:var(--blue-light); border:1px solid var(--blue); border-radius:12px; }
+    #newPondokForm { margin-top:18px; padding-top:16px; border-top:2px solid var(--primary-soft); }
+    #newPondokFields { border:0; padding:0; margin:0; min-width:0; }
+    #newPondokFields legend { font-weight:700; color:var(--primary-deep); font-size:1.1rem; margin-bottom:8px; }
+    .new-pondok-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px 16px; }
+    .new-pondok-wide { grid-column:1/-1; }
+    .field-error { color:var(--red-dark); font-size:.86rem; margin:5px 0 0; line-height:1.6; }
+    .field-error:empty { display:none; }
+    #newPondokForm [aria-invalid="true"] { border:2px solid var(--danger); }
+    #newPondokErrors { padding:14px; border:2px solid var(--danger); background:#fef2f2; border-radius:12px; margin-bottom:14px; color:var(--red-dark); }
+    #newPondokErrors a { color:var(--red-dark); text-decoration:underline; }
+    #pondokAddedStatus:not(:empty) { padding:12px; background:var(--green-soft); color:var(--green-dark); border-radius:12px; }
+    @media(max-width:640px) { .new-pondok-grid { grid-template-columns:1fr; } }
     .workflow-step .step-label { white-space:normal; }
     @media (max-width:640px) { .mode-grid { grid-template-columns:1fr; } .flow-actions .btn { flex:1 1 auto; } }
   </style>
@@ -669,6 +685,24 @@
         </div>
         <p id="pondokLoadStatus" class="search-status small" role="status">กำลังโหลดรายชื่อปอเนาะ…</p>
         <button type="button" id="retryPondokBtn" class="btn btn-outline2 section-hidden" onclick="loadPondokList()">ลองโหลดรายชื่ออีกครั้ง</button>
+        <div id="newPondokPrompt" class="new-pondok-prompt section-hidden">
+          <p class="mb-2">ไม่พบสถาบันที่ค้นหา ลองค้นด้วยชื่อสั้น ๆ หรือรหัสสถาบันก่อน หากยังไม่มีในระบบสามารถเพิ่มข้อมูลได้</p>
+          <button type="button" id="openNewPondokBtn" class="btn btn-info" onclick="openNewPondokForm()">เพิ่มสถาบันปอเนาะ</button>
+        </div>
+        <form id="newPondokForm" class="section-hidden" onsubmit="submitNewPondok(event)" novalidate>
+          <div id="newPondokErrors" class="section-hidden" role="alert" tabindex="-1"></div>
+          <fieldset id="newPondokFields">
+            <legend>เพิ่มข้อมูลสถาบันปอเนาะ</legend>
+            <p class="small text-muted">จำเป็นต้องกรอกเฉพาะรหัสและชื่อสถาบัน ช่องอื่นเว้นว่างได้หากยังไม่ทราบ · ตรวจสอบข้อมูลก่อนบันทึก</p>
+            <div id="newPondokInputs" class="new-pondok-grid"></div>
+            <p class="small text-muted">ช่องจำนวนให้กรอกจำนวนเต็มตั้งแต่ 0 ขึ้นไป หากยังไม่ทราบให้เว้นว่าง</p>
+            <div class="flow-actions">
+              <button type="submit" id="newPondokSubmitBtn" class="btn btn-primary">บันทึกและเลือกสถาบันนี้</button>
+              <button type="button" class="btn btn-outline2" onclick="cancelNewPondok()">ยกเลิก / กลับไปค้นหา</button>
+            </div>
+          </fieldset>
+        </form>
+        <p id="pondokAddedStatus" role="status"></p>
         <div id="selectedInfo" class="info-box d-none">
           <b id="selName"></b><br>
           <span id="selDetail" class="small text-muted"></span>
@@ -1021,7 +1055,20 @@
 
     // ===================== State =====================
     let session = { username: '', fname: '', tel: '', role: '' };
-    let pondokList = [];
+    let pondokList = [], pondokListState = 'loading';
+    let creatingPondok = false, newPondokDirty = false;
+    const NEW_PONDOK_FIELDS = [
+      {key:'id',label:'รหัสสถาบัน',max:50,required:true},
+      {key:'name',label:'ชื่อสถาบัน (ปอเนาะ)',max:200,required:true},
+      {key:'address',label:'ที่อยู่',max:500,wide:true},
+      {key:'dist',label:'อำเภอ',max:100},
+      {key:'subdist',label:'ตำบล',max:100},
+      {key:'phone',label:'โทรศัพท์',max:40,type:'tel',wide:true},
+      {key:'staff',label:'จำนวนบุคลากร (คน)',type:'number'},
+      {key:'students',label:'จำนวนผู้เรียนทั้งหมด (คน)',type:'number'},
+      {key:'foreign',label:'จำนวนผู้เรียนต่างชาติ (คน)',type:'number'},
+      {key:'coords',label:'พิกัด',max:80,wide:true}
+    ];
     let selectedPondok = null;
     let history = [];
     // Keep all definitions for historical records and summary reports.
@@ -1224,16 +1271,166 @@
     function norm(s) { return String(s == null ? '' : s).toLowerCase(); }
 
     async function loadPondokList() {
+      pondokListState = 'loading';
+      $('newPondokPrompt').classList.add('section-hidden');
       $('pondokLoadStatus').textContent = 'กำลังโหลดรายชื่อปอเนาะ…';
       $('retryPondokBtn').classList.add('section-hidden');
       try {
         const res = await api('getPondokList');
         if (!res.success || !Array.isArray(res.data)) throw new Error('Load failed');
-        pondokList = res.data; renderDir();
+        pondokList = res.data; pondokListState = 'ready'; renderDir();
         $('pondokLoadStatus').textContent = 'พร้อมค้นหา ' + pondokList.length + ' สถาบัน · เลือกจากรายการแล้วกดเริ่มการนิเทศ';
       } catch (e) {
+        pondokListState = 'error';
         $('pondokLoadStatus').textContent = 'โหลดรายชื่อไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง';
         $('retryPondokBtn').classList.remove('section-hidden');
+      }
+      if (workflowStage === 'select' && !$('selPondokSearch').disabled) filterPondok('sel');
+    }
+
+    function renderNewPondokForm() {
+      $('newPondokInputs').innerHTML = NEW_PONDOK_FIELDS.map(f => '<div class="' + (f.wide ? 'new-pondok-wide' : '') + '">' +
+        '<label for="new_' + f.key + '">' + esc(f.label) + (f.required ? ' (จำเป็น)' : '') + '</label>' +
+        '<input id="new_' + f.key + '" name="' + f.key + '" type="' + (f.type || 'text') + '" class="form-control" ' +
+        (f.max ? 'maxlength="' + f.max + '" ' : 'min="0" step="1" inputmode="numeric" ') + (f.required ? 'required ' : '') +
+        'aria-describedby="new_' + f.key + '_error' + (f.key === 'coords' ? ' new_coords_hint' : '') + '">' +
+        (f.key === 'coords' ? '<p id="new_coords_hint" class="small text-muted">ละติจูด, ลองจิจูด เช่น 6.426, 101.825 · เว้นว่างแล้วปักหมุดภายหลังได้</p>' : '') +
+        '<p class="field-error" id="new_' + f.key + '_error"></p></div>').join('');
+      $('newPondokForm').addEventListener('input', ev => {
+        newPondokDirty = true;
+        ev.target.removeAttribute('aria-invalid');
+        const error = $(ev.target.id + '_error');
+        if (error) error.textContent = '';
+        $('newPondokErrors').classList.add('section-hidden');
+      });
+    }
+
+    function resetNewPondokForm() {
+      newPondokDirty = false;
+      $('newPondokForm').reset();
+      $('newPondokForm').classList.add('section-hidden');
+      $('newPondokPrompt').classList.add('section-hidden');
+      $('newPondokErrors').classList.add('section-hidden');
+      $('selPondokSearch').disabled = false;
+    }
+
+    function showNewPondokErrors(errors, message) {
+      NEW_PONDOK_FIELDS.forEach(f => {
+        const text = errors[f.key] || '';
+        $('new_' + f.key + '_error').textContent = text;
+        $('new_' + f.key).setAttribute('aria-invalid', String(!!text));
+      });
+      const links = NEW_PONDOK_FIELDS.filter(f => errors[f.key]).map(f => '<li><a href="#new_' + f.key + '" onclick="document.getElementById(\'new_' + f.key + '\').focus();return false;">' + esc(f.label + ': ' + errors[f.key]) + '</a></li>').join('');
+      $('newPondokErrors').innerHTML = '<b>' + esc(message || 'กรุณาตรวจสอบข้อมูลก่อนบันทึก') + '</b>' + (links ? '<ul>' + links + '</ul>' : '');
+      $('newPondokErrors').classList.remove('section-hidden');
+      $('newPondokErrors').focus();
+    }
+
+    function readNewPondok() {
+      const data = {}, errors = {};
+      NEW_PONDOK_FIELDS.forEach(f => {
+        const input = $('new_' + f.key), value = input.value.trim();
+        data[f.key] = value;
+        if (f.required && !value) errors[f.key] = 'กรุณากรอก' + f.label;
+        if (f.max && (value.length > f.max || /[\x00-\x1f\x7f]/.test(value))) errors[f.key] = 'กรอกข้อความไม่เกิน ' + f.max + ' ตัวอักษร และไม่ขึ้นบรรทัดใหม่';
+        if (f.type === 'number') {
+          if (input.validity.badInput || (value && (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value))))) errors[f.key] = 'กรอกจำนวนเต็มตั้งแต่ 0 ขึ้นไป หรือเว้นว่างหากยังไม่ทราบ';
+          else data[f.key] = value === '' ? '' : Number(value);
+        }
+      });
+      if (!errors.foreign && !errors.students && data.foreign !== '' && data.students !== '' && data.foreign > data.students) errors.foreign = 'จำนวนผู้เรียนต่างชาติต้องไม่เกินจำนวนผู้เรียนทั้งหมด';
+      if (data.coords) {
+        const pair = data.coords.match(/^([+-]?\d+(?:\.\d+)?)\s*,\s*([+-]?\d+(?:\.\d+)?)$/);
+        if (!pair || Math.abs(Number(pair[1])) > 90 || Math.abs(Number(pair[2])) > 180) errors.coords = 'ใช้รูปแบบ ละติจูด, ลองจิจูด เช่น 6.426, 101.825 (ละติจูด -90 ถึง 90 / ลองจิจูด -180 ถึง 180)';
+        else data.coords = Number(pair[1]) + ', ' + Number(pair[2]);
+      }
+      return {data, errors};
+    }
+
+    function openNewPondokForm() {
+      const query = $('selPondokSearch').value.trim();
+      if (!session.username || workflowStage !== 'select' || pondokListState !== 'ready' || !query || pondokMatches(query).length || creatingPondok || openingForm || deleting) return;
+      clearPondokSelection();
+      $('selPondokSearch').value = query;
+      $('selPondokSearch').disabled = true;
+      $('newPondokForm').classList.remove('section-hidden');
+      NEW_PONDOK_FIELDS.forEach(f => { $('new_' + f.key + '_error').textContent = ''; $('new_' + f.key).removeAttribute('aria-invalid'); });
+      $('new_name').value = query;
+      $('new_id').focus();
+    }
+
+    async function cancelNewPondok() {
+      if (!await confirmUnsavedChanges('ยกเลิกการเพิ่มสถาบัน?')) return;
+      resetNewPondokForm();
+      filterPondok('sel');
+      $('selPondokSearch').focus();
+    }
+
+    async function reauthenticatePondokCreator() {
+      const username = session.username;
+      const result = await Swal.fire({
+        title:'ยืนยันตัวตนเพื่อเพิ่มสถาบัน', text:'เซสชันเดิมต้องยืนยันอีกครั้ง ข้อมูลที่กรอกจะยังอยู่',
+        input:'password', inputLabel:'รหัสผ่านของ ' + username, inputAttributes:{autocomplete:'current-password'},
+        showCancelButton:true, confirmButtonText:'ยืนยัน', cancelButtonText:'กลับไปแบบฟอร์ม', showLoaderOnConfirm:true,
+        allowOutsideClick:() => !Swal.isLoading(),
+        preConfirm:async password => {
+          if (!password) { Swal.showValidationMessage('กรุณากรอกรหัสผ่าน'); return false; }
+          try {
+            const res = await api('login', {username, password});
+            if (!res.success || !res.userData?.addPondokToken || res.userData.username !== username) {
+              Swal.showValidationMessage(esc(res.message || 'ยืนยันตัวตนไม่สำเร็จ กรุณาลองอีกครั้ง')); return false;
+            }
+            return res.userData;
+          } catch (err) { Swal.showValidationMessage('เชื่อมต่อไม่ได้ กรุณาลองอีกครั้ง'); return false; }
+        }
+      });
+      if (!result.isConfirmed || !result.value) return false;
+      session = result.value;
+      try { localStorage.setItem('pondok_session', JSON.stringify(session)); } catch (e) {}
+      return true;
+    }
+
+    async function submitNewPondok(ev) {
+      ev.preventDefault();
+      if (!session.username || creatingPondok || workflowStage !== 'select' || $('newPondokForm').classList.contains('section-hidden')) return;
+      const checked = readNewPondok();
+      if (Object.keys(checked.errors).length) { showNewPondokErrors(checked.errors); return; }
+      creatingPondok = true;
+      $('newPondokFields').disabled = true;
+      $('newPondokErrors').classList.add('section-hidden');
+      let saved = null;
+      try {
+        if (!session.addPondokToken && !await reauthenticatePondokCreator()) return;
+        const ask = await Swal.fire({icon:'question',title:'ยืนยันเพิ่มสถาบันปอเนาะ?',text:checked.data.id + ' · ' + checked.data.name,showCancelButton:true,confirmButtonText:'บันทึกและเลือกสถาบันนี้',cancelButtonText:'กลับไปตรวจสอบ'});
+        if (!ask.isConfirmed) return;
+        const send = () => api('addPondok', {username:session.username, token:session.addPondokToken, institution:checked.data});
+        showBusy('กำลังเพิ่มสถาบัน', 'กำลังตรวจสอบรหัสซ้ำและบันทึกทะเบียนสถาบัน');
+        let res = await send();
+        if (res.code === 'AUTH_REQUIRED') {
+          closeBusy();
+          if (!await reauthenticatePondokCreator()) return;
+          showBusy('กำลังเพิ่มสถาบัน', 'กำลังตรวจสอบรหัสซ้ำและบันทึกทะเบียนสถาบัน');
+          res = await send();
+        }
+        closeBusy();
+        if (!res.success) { showNewPondokErrors(res.errors || {}, res.message || 'บันทึกไม่สำเร็จ ข้อมูลยังอยู่ กรุณาลองอีกครั้ง'); return; }
+        saved = res.data;
+      } catch (err) {
+        closeBusy();
+        showNewPondokErrors({}, 'ยังยืนยันผลการเพิ่มไม่ได้ ข้อมูลที่กรอกยังอยู่ กรุณากลับไปค้นหาด้วยรหัสนี้ก่อนลองบันทึกอีกครั้ง เพื่อป้องกันข้อมูลซ้ำ');
+      } finally {
+        creatingPondok = false;
+        $('newPondokFields').disabled = false;
+      }
+      if (saved) {
+        resetNewPondokForm();
+        const index = pondokList.findIndex(p => String(p.id) === String(saved.id));
+        if (index >= 0) pondokList[index] = saved; else pondokList.push(saved);
+        renderDir();
+        await pickPondok('sel', pondokList.findIndex(p => String(p.id) === String(saved.id)));
+        $('pondokAddedStatus').textContent = 'เพิ่มสถาบัน ' + saved.name + ' เรียบร้อยแล้ว กด “เริ่มการนิเทศใหม่” เพื่อกรอกแบบนิเทศต่อได้';
+        $('pondokLoadStatus').textContent = 'พร้อมค้นหา ' + pondokList.length + ' สถาบัน';
+        $('startBtn').focus();
       }
     }
 
@@ -1246,9 +1443,13 @@
     }
 
     function filterPondok(ctx) {
+      if (creatingPondok || !$('newPondokForm').classList.contains('section-hidden')) return;
       const q = $('selPondokSearch').value;
       const box = $('selPondokSuggest');
       const items = pondokMatches(q);
+      const canAdd = !!session.username && workflowStage === 'select' && pondokListState === 'ready' && !!q.trim() && !items.length;
+      $('newPondokPrompt').classList.toggle('section-hidden', !canAdd);
+      if (canAdd) { box.classList.add('d-none'); return; }
       if (!items.length) { box.classList.remove('d-none'); box.innerHTML = '<p class="search-status" style="padding:12px">' + (pondokList.length ? 'ไม่พบปอเนาะที่ค้นหา ลองใช้ชื่อสั้น ๆ หรือตำบล / อำเภอ' : 'ยังไม่มีรายชื่อพร้อมใช้งาน โปรดตรวจสอบสถานะการโหลดด้านล่าง') + '</p>'; return; }
       box.innerHTML = items.map((c, i) =>
         '<button type="button" class="suggest-item" data-i="' + i + '" onclick="pickPondok(\'' + ctx + '\',' + pondokList.indexOf(c) + ')">' +
@@ -1266,7 +1467,12 @@
 
     async function pickPondok(ctx, idx) {
       const c = pondokList[idx];
-      if (!c || !session.username || workflowStage !== 'select' || openingForm || deleting || saving) return;
+      if (!c || !session.username || workflowStage !== 'select' || openingForm || deleting || saving || creatingPondok) return;
+      if (!$('newPondokForm').classList.contains('section-hidden')) {
+        if (!await confirmUnsavedChanges('กลับไปเลือกสถาบันเดิม?')) return;
+        resetNewPondokForm();
+      }
+      $('newPondokPrompt').classList.add('section-hidden');
       if (selectedPondok && String(selectedPondok.id) === String(c.id)) {
         $('selPondokSearch').value = c.name;
         $('selPondokSuggest').classList.add('d-none');
@@ -1302,12 +1508,12 @@
     }
 
     async function confirmUnsavedChanges(title) {
-      if (saving || openingForm || deleting) return false;
-      if (!evalDirty) return true;
+      if (saving || openingForm || deleting || creatingPondok) return false;
+      if (!evalDirty && !newPondokDirty) return true;
       const result = await Swal.fire({
         icon: 'warning',
         title: title || 'มีข้อมูลที่ยังไม่ได้บันทึก',
-        text: 'ข้อมูลที่แก้ไขไว้จะหายไป หากยังไม่กดบันทึกผลการนิเทศ',
+        text: newPondokDirty ? 'ข้อมูลสถาบันที่กรอกไว้ยังไม่ได้บันทึก หากออกตอนนี้ข้อมูลจะหายไป' : 'ข้อมูลที่แก้ไขไว้จะหายไป หากยังไม่กดบันทึกผลการนิเทศ',
         showCancelButton: true,
         confirmButtonText: 'ออกโดยไม่บันทึก',
         cancelButtonText: 'กลับไปบันทึก',
@@ -1500,6 +1706,8 @@
     }
 
     function clearPondokSelection() {
+      resetNewPondokForm();
+      $('pondokAddedStatus').textContent = '';
       selectedPondok = null;
       history = [];
       $('historyTitle').textContent = 'ประวัติการนิเทศของสถาบันนี้';
@@ -2491,7 +2699,13 @@
 
     function printInspectionReport() {
       if ($('reportPreview').classList.contains('section-hidden')) return;
-      window.print();
+      // The report is inside a collapsible <details>. Open it before print so
+      // the browser never captures an empty closed-details page.
+      $('reportsCard').classList.remove('section-hidden');
+      $('reportsCard').open = true;
+      $('reportPreview').classList.remove('section-hidden');
+      const print = () => window.print();
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(print); else setTimeout(print, 0);
     }
     function mdLite(t) {
       let s = esc(t);
@@ -2521,6 +2735,7 @@
 
     // ===================== Boot =====================
     (async function boot() {
+      renderNewPondokForm();
       $('selectionCard').after($('historyCard'));
       $('historyCard').after($('reportsCard'));
       $('reportsCard').append($('dashCard'));
@@ -2528,7 +2743,7 @@
       $('mainForm').addEventListener('input', formChanged);
       $('mainForm').addEventListener('change', formChanged);
       window.addEventListener('beforeunload', ev => {
-        if (!evalDirty && !saving) return;
+        if (!evalDirty && !saving && !newPondokDirty && !creatingPondok) return;
         ev.preventDefault();
         ev.returnValue = '';
       });
