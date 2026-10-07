@@ -510,6 +510,9 @@
     .new-pondok-wide { grid-column:1/-1; }
     .field-error { color:var(--red-dark); font-size:.86rem; margin:5px 0 0; line-height:1.6; }
     .field-error:empty { display:none; }
+    .field-check { font-size:.86rem; margin:5px 0 0; line-height:1.6; min-height:1.6em; }
+    .field-check.is-duplicate { color:var(--red-dark); font-weight:700; }
+    .field-check.is-available { color:var(--green-dark); }
     #newPondokForm [aria-invalid="true"] { border:2px solid var(--danger); }
     #newPondokErrors { padding:14px; border:2px solid var(--danger); background:#fef2f2; border-radius:12px; margin-bottom:14px; color:var(--red-dark); }
     #newPondokErrors a { color:var(--red-dark); text-decoration:underline; }
@@ -1293,7 +1296,8 @@
         '<label for="new_' + f.key + '">' + esc(f.label) + (f.required ? ' (จำเป็น)' : '') + '</label>' +
         '<input id="new_' + f.key + '" name="' + f.key + '" type="' + (f.type || 'text') + '" class="form-control" ' +
         (f.max ? 'maxlength="' + f.max + '" ' : 'min="0" step="1" inputmode="numeric" ') + (f.required ? 'required ' : '') +
-        'aria-describedby="new_' + f.key + '_error' + (f.key === 'coords' ? ' new_coords_hint' : '') + '">' +
+        'aria-describedby="new_' + f.key + '_error' + (f.key === 'name' ? ' new_name_duplicate_status' : '') + (f.key === 'coords' ? ' new_coords_hint' : '') + '">' +
+        (f.key === 'name' ? '<p class="field-check" id="new_name_duplicate_status" role="status" aria-live="polite"></p>' : '') +
         (f.key === 'coords' ? '<p id="new_coords_hint" class="small text-muted">ละติจูด, ลองจิจูด เช่น 6.426, 101.825 · เว้นว่างแล้วปักหมุดภายหลังได้</p>' : '') +
         '<p class="field-error" id="new_' + f.key + '_error"></p></div>').join('');
       $('newPondokForm').addEventListener('input', ev => {
@@ -1301,8 +1305,29 @@
         ev.target.removeAttribute('aria-invalid');
         const error = $(ev.target.id + '_error');
         if (error) error.textContent = '';
+        if (ev.target.id === 'new_name') updateNewPondokNameDuplicate(ev.target.value);
         $('newPondokErrors').classList.add('section-hidden');
       });
+    }
+
+    function updateNewPondokNameDuplicate(value) {
+      const input = $('new_name'), status = $('new_name_duplicate_status');
+      if (!input || !status) return false;
+      const name = String(value || '').trim();
+      status.className = 'field-check';
+      status.textContent = '';
+      input.removeAttribute('aria-invalid');
+      if (!name) return false;
+      const duplicate = pondokList.find(c => norm(c.name) === norm(name));
+      if (duplicate) {
+        status.classList.add('is-duplicate');
+        status.textContent = 'พบชื่อสถาบันซ้ำกับ “' + duplicate.name + '” ในระบบ กรุณาตรวจสอบก่อนบันทึก';
+        input.setAttribute('aria-invalid', 'true');
+        return true;
+      }
+      status.classList.add('is-available');
+      status.textContent = 'ยังไม่พบชื่อสถาบันซ้ำ สามารถใช้ชื่อนี้ได้';
+      return false;
     }
 
     function resetNewPondokForm() {
@@ -1338,6 +1363,7 @@
           else data[f.key] = value === '' ? '' : Number(value);
         }
       });
+      if (!errors.name && updateNewPondokNameDuplicate(data.name)) errors.name = 'ชื่อสถาบันนี้มีอยู่ในระบบแล้ว กรุณาใช้ชื่ออื่น';
       if (!errors.foreign && !errors.students && data.foreign !== '' && data.students !== '' && data.foreign > data.students) errors.foreign = 'จำนวนผู้เรียนต่างชาติต้องไม่เกินจำนวนผู้เรียนทั้งหมด';
       if (data.coords) {
         const pair = data.coords.match(/^([+-]?\d+(?:\.\d+)?)\s*,\s*([+-]?\d+(?:\.\d+)?)$/);
@@ -1356,6 +1382,7 @@
       $('newPondokForm').classList.remove('section-hidden');
       NEW_PONDOK_FIELDS.forEach(f => { $('new_' + f.key + '_error').textContent = ''; $('new_' + f.key).removeAttribute('aria-invalid'); });
       $('new_name').value = query;
+      updateNewPondokNameDuplicate(query);
       $('new_id').focus();
     }
 

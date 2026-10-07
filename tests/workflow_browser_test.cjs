@@ -118,7 +118,10 @@ async function checkContrast(locator, label) {
     await visible('newPondokPrompt');
     await page.locator('#openNewPondokBtn').click();
     await page.locator('#new_id').fill('NEW-001');
+    await page.locator('#new_name').fill('ปอเนาะทดสอบ ก');
+    assert((await page.locator('#new_name_duplicate_status').innerText()).includes('พบชื่อสถาบันซ้ำ'), 'duplicate name feedback shown while typing');
     await page.locator('#new_name').fill('ปอเนาะใหม่จากผู้ใช้งาน');
+    assert((await page.locator('#new_name_duplicate_status').innerText()).includes('ยังไม่พบชื่อสถาบันซ้ำ'), 'available name feedback shown while typing');
     await page.locator('#new_dist').fill('อำเภอทดสอบ');
     await page.locator('#newPondokSubmitBtn').click(); await confirm();
     await waitVisible('historyCard');
