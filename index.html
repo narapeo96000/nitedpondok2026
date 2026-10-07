@@ -2757,5 +2757,42 @@
       await loadPondokList();
     })();
   </script>
+<script>
+// Make the institution-create action easy to discover from the selection screen.
+(function addNewPondokShortcut() {
+  function mount() {
+    if (document.getElementById('newPondokShortcut')) return;
+    const form = document.getElementById('newPondokForm');
+    if (!form) return;
+
+    if (!document.getElementById('newPondokShortcutStyles')) {
+      const style = document.createElement('style');
+      style.id = 'newPondokShortcutStyles';
+      style.textContent = '.new-pondok-shortcut{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;margin:.75rem 0;padding:.7rem 1rem;border:1px solid #2563eb;border-radius:.65rem;background:#eff6ff;color:#1d4ed8;font-weight:700;cursor:pointer}.new-pondok-shortcut:hover{background:#dbeafe}.new-pondok-shortcut:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}';
+      document.head.appendChild(style);
+    }
+
+    const prompt = document.getElementById('newPondokPrompt');
+    const anchor = prompt || form;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.id = 'newPondokShortcut';
+    button.className = 'btn btn-outline-primary new-pondok-shortcut';
+    button.textContent = 'เพิ่มข้อมูลสถาบันปอเนาะ';
+    button.setAttribute('aria-controls', 'newPondokForm');
+    button.addEventListener('click', function () {
+      if (prompt) prompt.classList.remove('section-hidden');
+      form.classList.remove('section-hidden');
+      form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const firstField = form.querySelector('input, textarea, select');
+      if (firstField) setTimeout(() => firstField.focus(), 250);
+    });
+    anchor.parentNode.insertBefore(button, anchor);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);
+  else mount();
+  new MutationObserver(mount).observe(document.documentElement, { childList: true, subtree: true });
+})();
+</script>
 </body>
 </html>
